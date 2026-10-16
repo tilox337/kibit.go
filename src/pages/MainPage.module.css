@@ -1,0 +1,7 @@
+.account {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  translate: -50% 0;
+  z-index: 1;
+}

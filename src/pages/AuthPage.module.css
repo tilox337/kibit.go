@@ -6,9 +6,9 @@
   justify-content: safe center;
   padding: 24px;
   box-sizing: border-box;
-  background: #f4f0e6;
-  color: #161616;
-  font-family: Georgia, "Times New Roman", serif;
+  background: #fff;
+  color: #111;
+  font-family: system-ui, sans-serif;
 }
 
 .panel {
@@ -38,7 +38,7 @@
   height: 44px;
   padding: 0 12px;
   border: 1px solid #161616;
-  background: #fffdf8;
+  background: #fff;
   color: inherit;
   font: 16px/1.2 system-ui, sans-serif;
 }
@@ -63,7 +63,7 @@
   height: 44px;
   border: 1px solid #161616;
   background: #161616;
-  color: #f4f0e6;
+  color: #fff;
   font: 15px/1 system-ui, sans-serif;
   letter-spacing: 0.06em;
   text-transform: uppercase;
