@@ -1,13 +1,27 @@
 import "./App.css";
+import { useState } from "react";
 import Settings from "./Settings";
 import mapImg from "./assets/map.jpg";
 import Footer from "./Footer";
 import Zoom from "./Zoom";
 
 function App() {
+  const [zoomSettings, setZoomSettings] = useState(1);
+
+  const handleZoomIn = (e: React.MouseEvent) => {
+    setZoomSettings((prev) => Math.min(prev + 0.1, 3));
+  };
+  const handleZoomOut = (e: React.MouseEvent) => {
+    setZoomSettings((prev) => Math.min(prev - 0.1, 0.5));
+  };
+  const handleResetZoom = (e: React.MouseEvent) => {
+    setZoomSettings(1);
+  };
   return (
     <div
       style={{
+        transform: `scale(${zoomSettings}z)`,
+
         background: `url( ${mapImg} )`,
         backgroundSize: "cover",
         backgroundPosition: "center",
@@ -34,7 +48,11 @@ function App() {
           top: "50%",
         }}
       >
-        <Zoom></Zoom>
+        <Zoom
+          handleZoomIn={handleZoomIn}
+          handleZoomOut={handleZoomOut}
+          handleResetZoom={handleResetZoom}
+        ></Zoom>
       </div>
     </div>
   );
