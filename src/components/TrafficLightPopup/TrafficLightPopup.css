@@ -1,83 +1,106 @@
 .traffic-popup {
-  position: fixed;
-  z-index: 1000; /* выше карты */
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px 24px;
-  background: #ffffff;
-  color: #1c1c1e;
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-  font-family: system-ui, sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 170px;
+    padding: 4px;
+    color: #1c1c1e;
+    font-family: system-ui, sans-serif;
+}
+
+.leaflet-popup-content-wrapper {
+    border-radius: 10px;
+}
+
+.leaflet-popup-content {
+    margin: 10px 12px;
 }
 
 .traffic-popup__info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
 .traffic-popup__label {
-  font-size: 16px;
-  font-weight: 500;
+    font-size: 16px;
+    font-weight: 500;
 }
 
 .traffic-popup__time {
-  font-size: 32px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
+    font-size: 32px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
 }
+
 .traffic-dot {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  flex-shrink: 0;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    flex-shrink: 0;
 }
 
 .traffic-dot--red {
-  background: #e53935;
-  box-shadow: 0 0 16px #e53935;
+    background: #e53935;
+    box-shadow: 0 0 16px #e53935;
 }
 
 .traffic-dot--yellow {
-  background: #fdd835;
-  box-shadow: 0 0 16px #fdd835;
+    background: #fdd835;
+    box-shadow: 0 0 16px #fdd835;
 }
 
 .traffic-dot--green {
-  background: #43a047;
-  box-shadow: 0 0 16px #43a047;
+    background: #43a047;
+    box-shadow: 0 0 16px #43a047;
 }
 
 /* Моргающий зелёный: раз в секунду гаснет */
 .traffic-dot--flashing {
-  animation: traffic-dot-blink 1s steps(1, end) infinite;
+    animation: traffic-dot-blink 1s steps(1, end) infinite;
 }
 
 @keyframes traffic-dot-blink {
-  0% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.15;
-  }
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.15;
+    }
 }
 
 .traffic-popup__delete {
-  margin-left: 8px;
-  padding: 8px 14px;
-  border: none;
-  border-radius: 10px;
-  background: #fdecea;
-  color: #c62828;
-  font: 500 14px system-ui, sans-serif;
-  cursor: pointer;
+    margin-left: auto;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 10px;
+    background: #fdecea;
+    color: #c62828;
+    font: 500 14px system-ui, sans-serif;
+    cursor: pointer;
 }
 
 .traffic-popup__delete:hover {
-  background: #f9d3cf;
+    background: #f9d3cf;
+}
+
+@media (max-width: 700px) {
+    .traffic-popup {
+        min-width: 150px;
+        gap: 8px;
+    }
+
+    .traffic-dot {
+        width: 44px;
+        height: 44px;
+    }
+
+    .traffic-popup__time {
+        font-size: 22px;
+    }
+
+    .traffic-popup__delete {
+        min-height: 44px;
+    }
 }

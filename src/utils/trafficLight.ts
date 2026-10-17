@@ -34,6 +34,14 @@ export function getSecondsSinceStart(
   return nowSeconds - startHour * SECONDS_IN_HOUR;
 }
 
+export function getPhaseOffsetSeconds(id: string, cycleLength: number): number {
+  let hash = 0;
+  for (const character of id) {
+    hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+  }
+  return hash % cycleLength;
+}
+
 // ---------- Цикл ----------
 
 // Цикл: красный -> зелёный -> жёлтый -> (снова красный)
@@ -84,14 +92,6 @@ function isGreenFlashing(
   return color === "green" && secondsLeft <= GREEN_FLASH_SECONDS;
 }
 
-// Для жёлтого время до переключения не показываем
-function getDisplayedSecondsLeft(
-  color: TrafficLightColor,
-  secondsLeft: number,
-): number | null {
-  return color === "yellow" ? null : secondsLeft;
-}
-
 // Главная функция: какой цвет горит и сколько осталось в момент nowSeconds
 export function calcTrafficLightState(
   config: TrafficLightConfig,
@@ -101,14 +101,16 @@ export function calcTrafficLightState(
   if (sinceStart < 0) return OFF_STATE;
 
   const phases = buildPhases(config);
-  const offset = sinceStart % getCycleLength(phases);
+  const cycleLength = getCycleLength(phases);
+  const offset =
+    (sinceStart + (config.phaseOffsetSeconds ?? 0)) % cycleLength;
   const { phase, elapsed } = findPhaseAt(phases, offset);
   const secondsLeft = Math.ceil(phase.duration - elapsed);
 
   return {
     isWorking: true,
     color: phase.color,
-    secondsLeft: getDisplayedSecondsLeft(phase.color, secondsLeft),
+    secondsLeft,
     isFlashing: isGreenFlashing(phase.color, secondsLeft),
   };
 }
@@ -124,13 +126,20 @@ export function generateId(): string {
 export function createTrafficLightPoint(
   lat: number,
   lng: number,
+  phaseOffsetSeconds?: number,
 ): TrafficLightPoint {
+  const id = generateId();
+  const cycleLength =
+    DEFAULT_RED_SECONDS + DEFAULT_GREEN_SECONDS + YELLOW_SECONDS;
+
   return {
-    id: generateId(),
+    id,
     lat,
     lng,
     redSeconds: DEFAULT_RED_SECONDS,
     greenSeconds: DEFAULT_GREEN_SECONDS,
     startHour: DEFAULT_START_HOUR,
+    phaseOffsetSeconds:
+      phaseOffsetSeconds ?? getPhaseOffsetSeconds(id, cycleLength),
   };
 }

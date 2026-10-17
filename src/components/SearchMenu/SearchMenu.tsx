@@ -120,6 +120,8 @@ interface SearchMenuProps {
   onSelectPlace: (place: Place) => void; // выбрали пункт назначения
   isFavorite: (placeId: string) => boolean;
   onToggleFavorite: (place: Place) => void;
+  isMobileVisible: boolean;
+  onMobileClose: () => void;
 }
 
 // Закрывает меню по клику вне его и по Escape
@@ -152,11 +154,17 @@ export default function SearchMenu({
   onSelectPlace,
   isFavorite,
   onToggleFavorite,
+  isMobileVisible,
+  onMobileClose,
 }: SearchMenuProps) {
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isMobileVisible) inputRef.current?.focus();
+  }, [isMobileVisible]);
 
   const { results, isLoading, isSearching } = useSearchResults(query);
   const recommendations = useRecommendations();
@@ -165,6 +173,7 @@ export default function SearchMenu({
   const close = () => {
     setIsOpen(false);
     inputRef.current?.blur();
+    onMobileClose();
   };
   useCloseOnOutside(menuRef, isOpen, close);
 
@@ -185,7 +194,14 @@ export default function SearchMenu({
   };
 
   return (
-    <div className="search-menu" ref={menuRef}>
+    <div
+      className={
+        isMobileVisible
+          ? "search-menu"
+          : "search-menu search-menu--mobile-hidden"
+      }
+      ref={menuRef}
+    >
       <SearchInput
         value={query}
         onChange={setQuery}
@@ -200,7 +216,11 @@ export default function SearchMenu({
             {showNothingFound && (
               <p className="search-menu__hint">Ничего не найдено</p>
             )}
-            <PlaceSection title="Результаты" places={results} {...sectionProps} />
+            <PlaceSection
+              title="Результаты"
+              places={results}
+              {...sectionProps}
+            />
           </>
         ) : (
           <>
