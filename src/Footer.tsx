@@ -1,10 +1,10 @@
 export default function Footer() {
   return (
-    <>
-      <button></button>
-      <button></button>
-      <button></button>
-      <button></button>
-    </>
+    <div>
+      <input type="text" placeholder="Search"></input>
+      <button>Favourite</button>
+      <button>Gas station</button>
+      <button>Settings</button>
+    </div>
   );
 }
