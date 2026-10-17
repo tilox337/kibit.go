@@ -4,6 +4,8 @@ import Settings from "./Settings";
 import mapImg from "./assets/map.jpg";
 import Footer from "./Footer";
 import Zoom from "./Zoom";
+import Layout from "./Layout";
+import MainPage from "./MainPage";
 
 function App() {
   const [zoomSettings, setZoomSettings] = useState(1);
@@ -18,6 +20,7 @@ function App() {
     setZoomSettings(1);
   };
   return (
+    <>
     <div
       style={{
         transform: `scale(${zoomSettings}z)`,
@@ -54,7 +57,12 @@ function App() {
           handleResetZoom={handleResetZoom}
         ></Zoom>
       </div>
+      
     </div>
+      <Layout>
+      <MainPage />
+    </Layout>
+    </>
   );
 }
 

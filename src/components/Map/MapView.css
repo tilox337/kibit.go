@@ -1,0 +1,63 @@
+.map-view {
+  position: relative;
+  z-index: 0; /* своя область наложения, чтобы слои карты не лезли поверх всплывашки */
+  width: 100vw;
+  height: 100vh;
+}
+
+.map-view__map {
+  width: 100%;
+  height: 100%;
+}
+
+.map-view--placing .leaflet-container {
+  cursor: crosshair;
+}
+
+/* transform не трогаем: им Leaflet двигает маркер */
+.traffic-marker {
+  background: none;
+  border: none;
+  font-size: 28px;
+  line-height: 32px;
+  text-align: center;
+}
+
+.traffic-marker--selected {
+  filter: drop-shadow(0 0 6px #1e88e5) drop-shadow(0 0 3px #1e88e5);
+}
+
+/* Точка «Я здесь» */
+.origin-marker {
+  background: #1e88e5;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px rgba(30, 136, 229, 0.3);
+}
+
+.map-toolbar {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.place-button {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #1c1c1e;
+  font: 500 16px system-ui, sans-serif;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+
+.place-button--active {
+  background: #1e88e5;
+  color: #ffffff;
+}
