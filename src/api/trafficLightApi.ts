@@ -8,7 +8,37 @@ import { readStorage, writeStorage } from "../utils/storage";
 
 const TRAFFIC_LIGHTS_URL = `${API_URL}${TRAFFIC_LIGHTS_ENDPOINT}`;
 
-// Обе функции ЗАГЛУШКИ: пишут в консоль и хранят светофоры в localStorage вместо сервера.
+export interface OSMTrafficSignal {
+  id: string;
+  lat: number;
+  lng: number;
+}
+
+export interface MapBounds {
+  west: number;
+  south: number;
+  east: number;
+  north: number;
+}
+
+// OSM-сигналы загружаются через API; ручные светофоры пока хранятся в localStorage.
+
+export async function fetchOSMTrafficSignals(
+  bounds: MapBounds,
+  signal?: AbortSignal,
+): Promise<OSMTrafficSignal[]> {
+  const query = new URLSearchParams({
+    west: String(bounds.west),
+    south: String(bounds.south),
+    east: String(bounds.east),
+    north: String(bounds.north),
+  });
+  const response = await fetch(`/api/osm-traffic-lights?${query}`, { signal });
+  if (!response.ok) {
+    throw new Error(`Загрузка OSM-светофоров завершилась с HTTP ${response.status}`);
+  }
+  return (await response.json()) as OSMTrafficSignal[];
+}
 
 // Потом здесь будет fetch: GET {TRAFFIC_LIGHTS_URL} -> TrafficLightPoint[]
 export async function fetchTrafficLights(): Promise<TrafficLightPoint[]> {

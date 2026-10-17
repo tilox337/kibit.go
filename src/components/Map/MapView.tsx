@@ -18,9 +18,15 @@ import {
   OSM_ATTRIBUTION,
   OSM_TILE_URL,
 } from "../../constants/map";
-import { YELLOW_SECONDS } from "../../constants/trafficLight";
+import {
+  DEFAULT_GREEN_SECONDS,
+  DEFAULT_RED_SECONDS,
+  DEFAULT_START_HOUR,
+  YELLOW_SECONDS,
+} from "../../constants/trafficLight";
 import { ROUTE_FIT_PADDING } from "../../constants/route";
 import { DESTINATION_ZOOM } from "../../constants/search";
+import { fetchOSMTrafficSignals } from "../../api/trafficLightApi";
 import type { LatLng, Route } from "../../types/route";
 import type { Place } from "../../types/search";
 import type { TrafficLightPoint } from "../../types/trafficLight";
@@ -29,6 +35,7 @@ import TrafficLightPopup from "../TrafficLightPopup/TrafficLightPopup";
 import "./MapView.css";
 
 const TRAFFIC_LIGHT_POPUP_ZOOM = 16;
+const OSM_TRAFFIC_LIGHT_MIN_ZOOM = 16;
 
 const LIGHT_ICON = divIcon({
   className: "traffic-marker",
@@ -118,10 +125,12 @@ export function TrafficLightMarker({
   light,
   showPopup,
   onDelete,
+  phaseNote,
 }: {
   light: TrafficLightPoint;
   showPopup: boolean;
-  onDelete: (id: string) => void;
+  onDelete?: (id: string) => void;
+  phaseNote?: string;
 }) {
   const markerRef = useRef<LeafletMarker | null>(null);
   const cycleLength = light.redSeconds + light.greenSeconds + YELLOW_SECONDS;
@@ -151,7 +160,8 @@ export function TrafficLightMarker({
             greenSeconds={light.greenSeconds}
             startHour={light.startHour}
             phaseOffsetSeconds={phaseOffsetSeconds}
-            onDelete={() => onDelete(light.id)}
+            phaseNote={phaseNote}
+            onDelete={onDelete ? () => onDelete(light.id) : undefined}
           />
         </Popup>
       )}
@@ -168,19 +178,79 @@ function TrafficLightLayer({
 }) {
   const map = useMap();
   const [zoom, setZoom] = useState(map.getZoom());
+  const [boundsVersion, setBoundsVersion] = useState(0);
+  const [osmLights, setOsmLights] = useState<TrafficLightPoint[]>([]);
 
   useMapEvents({
-    zoomend: () => setZoom(map.getZoom()),
+    moveend: () => {
+      setZoom(map.getZoom());
+      setBoundsVersion((version) => version + 1);
+      setOsmLights([]);
+    },
   });
 
-  return lights.map((light) => (
-    <TrafficLightMarker
-      key={light.id}
-      light={light}
-      showPopup={zoom >= TRAFFIC_LIGHT_POPUP_ZOOM}
-      onDelete={onDeleteLight}
-    />
-  ));
+  useEffect(() => {
+    if (zoom < OSM_TRAFFIC_LIGHT_MIN_ZOOM) return;
+
+    const bounds = map.getBounds();
+    const controller = new AbortController();
+
+    fetchOSMTrafficSignals(
+      {
+        west: bounds.getWest(),
+        south: bounds.getSouth(),
+        east: bounds.getEast(),
+        north: bounds.getNorth(),
+      },
+      controller.signal,
+    )
+      .then((signals) => {
+        const cycleLength =
+          DEFAULT_RED_SECONDS + DEFAULT_GREEN_SECONDS + YELLOW_SECONDS;
+        setOsmLights(
+          signals.map((signal) => {
+            const id = `osm-${signal.id}`;
+            return {
+              id,
+              lat: signal.lat,
+              lng: signal.lng,
+              redSeconds: DEFAULT_RED_SECONDS,
+              greenSeconds: DEFAULT_GREEN_SECONDS,
+              startHour: DEFAULT_START_HOUR,
+              phaseOffsetSeconds: getPhaseOffsetSeconds(id, cycleLength),
+            };
+          }),
+        );
+      })
+      .catch((error: unknown) => {
+        if (error instanceof Error && error.name === "AbortError") return;
+        console.error("Не удалось загрузить OSM-светофоры", error);
+      });
+
+    return () => controller.abort();
+  }, [boundsVersion, map, zoom]);
+
+  return (
+    <>
+      {lights.map((light) => (
+        <TrafficLightMarker
+          key={light.id}
+          light={light}
+          showPopup={zoom >= TRAFFIC_LIGHT_POPUP_ZOOM}
+          onDelete={onDeleteLight}
+        />
+      ))}
+      {zoom >= OSM_TRAFFIC_LIGHT_MIN_ZOOM &&
+        osmLights.map((light) => (
+          <TrafficLightMarker
+            key={light.id}
+            light={light}
+            showPopup={zoom >= TRAFFIC_LIGHT_POPUP_ZOOM}
+            phaseNote="Условные фазы: OSM не содержит расписание светофора"
+          />
+        ))}
+    </>
+  );
 }
 
 // Кнопка режима: пока включена, клик по карте что-то ставит

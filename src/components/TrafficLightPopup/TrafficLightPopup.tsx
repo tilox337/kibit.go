@@ -65,6 +65,7 @@ interface TrafficLightPopupProps {
   greenSeconds: number; // сколько горит зелёный (вместе с морганием), сек
   startHour?: number; // во сколько начинается работа светофора, час (по умолчанию 5)
   phaseOffsetSeconds?: number;
+  phaseNote?: string;
   onDelete?: () => void; // если передать, во всплывашке появится кнопка «Удалить»
 }
 
@@ -74,6 +75,7 @@ export default function TrafficLightPopup({
   greenSeconds,
   startHour = DEFAULT_START_HOUR,
   phaseOffsetSeconds = 0,
+  phaseNote,
   onDelete,
 }: TrafficLightPopupProps) {
   const { isWorking, color, secondsLeft, isFlashing } = useTrafficLight({
@@ -96,6 +98,7 @@ export default function TrafficLightPopup({
       ) : (
         <OffMessage startHour={startHour} />
       )}
+      {phaseNote && <div className="traffic-popup__note">{phaseNote}</div>}
       {onDelete && <DeleteButton onClick={onDelete} />}
     </PopupShell>
   );
