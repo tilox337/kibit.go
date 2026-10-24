@@ -33,6 +33,11 @@
     font-variant-numeric: tabular-nums;
 }
 
+.traffic-popup__note {
+    color: #666;
+    font-size: 11px;
+}
+
 .traffic-dot {
     width: 56px;
     height: 56px;

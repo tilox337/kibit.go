@@ -25,6 +25,22 @@
     outline: none;
 }
 
+.search-menu__field {
+    display: block;
+}
+
+.search-menu__field + .search-menu__field {
+    margin-top: 8px;
+}
+
+.search-menu__label {
+    display: block;
+    margin: 0 0 4px 2px;
+    color: #6b6b73;
+    font-size: 12px;
+    font-weight: 600;
+}
+
 .search-menu__input:focus {
     border-color: #1e88e5;
 }

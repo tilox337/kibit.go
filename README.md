@@ -30,3 +30,40 @@ If you are developing a production application, we recommend enabling type-aware
 ```
 
 See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+
+## OSM traffic lights from PostgreSQL
+
+At zoom 16 and higher, the map requests OSM nodes inside the visible map bounds
+from `GET /api/osm-traffic-lights`. The API reads `nav_nodes` and selects rows
+whose JSONB tag `highway` is `traffic_signals`. OSM does not contain signal
+timings, so the popup uses the application's default cycle and labels it as
+estimated.
+
+The PostgreSQL API runs separately from Vite. Copy `.env.example` to `.env`,
+replace the placeholders with the database login, and run the API and frontend
+in separate terminals:
+
+```powershell
+npm run api
+npm run dev
+```
+
+The Vite development server proxies `/api` to port 3001. If the API itself runs
+in Docker, use the PostgreSQL service name instead of `127.0.0.1` in
+`DATABASE_URL`; `localhost` inside a container refers to that container.
+Configure the same `/api` route through a reverse proxy when deploying.
+
+For efficient viewport queries, create spatial and tag indexes once in the
+`v_navigator` database:
+
+```sql
+CREATE INDEX IF NOT EXISTS nav_nodes_geom_gix
+  ON nav_nodes USING GIST (geom);
+
+CREATE INDEX IF NOT EXISTS nav_nodes_traffic_signals_idx
+  ON nav_nodes ((tags ->> 'highway'))
+  WHERE tags ->> 'highway' = 'traffic_signals';
+```
+
+Then run `ANALYZE nav_nodes;`. Keep real database credentials in the ignored
+`.env` file or environment variables, not in source code.

@@ -29,11 +29,14 @@ export default function MainPage() {
     readStorage(SETTINGS_STORAGE_KEY, DEFAULT_SETTINGS),
   );
   const [mode, setMode] = useState<MapMode>("idle");
-  const [origin, setOrigin] = useState<LatLng | null>(null);
+  const [userLocation, setUserLocation] = useState<LatLng | null>(null);
+  const [userLocationFocusRequest, setUserLocationFocusRequest] = useState(0);
+  const [routeOrigin, setRouteOrigin] = useState<LatLng | null>(null);
   const [destination, setDestination] = useState<Place | null>(null);
-  const hasRequestedLocation = useRef(false);
-  const hasManualOrigin = useRef(false);
-  const { route, isLoading, isError } = useRoute(origin, destination, {
+  const hasInitialLocationFix = useRef(false);
+  const shouldFocusWhenLocated = useRef(false);
+  const activeOrigin = routeOrigin ?? userLocation;
+  const { route, isLoading, isError } = useRoute(activeOrigin, destination, {
     avoidTollRoads: settings.avoidTollRoads,
   });
 
@@ -42,33 +45,32 @@ export default function MainPage() {
   }, [settings]);
 
   useEffect(() => {
-    if (
-      !window.matchMedia("(max-width: 700px)").matches ||
-      !navigator.geolocation ||
-      hasRequestedLocation.current
-    ) {
-      return;
-    }
+    if (!navigator.geolocation) return;
 
-    hasRequestedLocation.current = true;
-    let isCancelled = false;
-
-    navigator.geolocation.getCurrentPosition(
+    let isActive = true;
+    const watchId = navigator.geolocation.watchPosition(
       ({ coords }) => {
-        if (!isCancelled && !hasManualOrigin.current) {
-          setOrigin({ lat: coords.latitude, lng: coords.longitude });
+        if (!isActive) return;
+        const location = { lat: coords.latitude, lng: coords.longitude };
+        setUserLocation(location);
+
+        if (!hasInitialLocationFix.current || shouldFocusWhenLocated.current) {
+          hasInitialLocationFix.current = true;
+          shouldFocusWhenLocated.current = false;
+          setUserLocationFocusRequest((request) => request + 1);
         }
       },
       (error) => {
-        if (error.code !== error.PERMISSION_DENIED) {
+        if (isActive && error.code !== error.PERMISSION_DENIED) {
           console.warn("Не удалось определить местоположение", error);
         }
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 },
     );
 
     return () => {
-      isCancelled = true;
+      isActive = false;
+      navigator.geolocation.clearWatch(watchId);
     };
   }, []);
 
@@ -97,17 +99,23 @@ export default function MainPage() {
     return () => mediaQuery.removeEventListener("change", applyTheme);
   }, [settings.theme, settings.cursorColor]);
 
+  const handleLocateUser = () => {
+    if (userLocation) {
+      shouldFocusWhenLocated.current = false;
+      setUserLocationFocusRequest((request) => request + 1);
+    } else {
+      shouldFocusWhenLocated.current = true;
+    }
+  };
+
   // Включить режим установки или выключить, если он уже включён
   const toggleMode = (target: MapMode) =>
     setMode((current) => (current === target ? "idle" : target));
 
-  // Клик по карте: ставим светофор или «Я здесь», в обычном режиме снимаем выбор
+  // Клик по карте: ставим светофор; в обычном режиме снимаем выбор
   const handleMapClick = (lat: number, lng: number) => {
     if (mode === "light") {
       addLight(lat, lng);
-    } else if (mode === "origin") {
-      hasManualOrigin.current = true;
-      setOrigin({ lat, lng });
     }
     setMode("idle");
     setIsMenuOpen(false);
@@ -118,7 +126,9 @@ export default function MainPage() {
       <MapView
         lights={lights}
         isPlacing={mode !== "idle"}
-        origin={origin}
+        userLocation={userLocation}
+        userLocationFocusRequest={userLocationFocusRequest}
+        routeOrigin={routeOrigin}
         destination={destination}
         route={route}
         onMapClick={handleMapClick}
@@ -126,6 +136,10 @@ export default function MainPage() {
       />
       <SearchMenu
         onSelectPlace={setDestination}
+        onSelectOrigin={(place) =>
+          setRouteOrigin({ lat: place.lat, lng: place.lng })
+        }
+        onResetOrigin={() => setRouteOrigin(null)}
         isFavorite={isFavorite}
         onToggleFavorite={toggleFavorite}
         isMobileVisible={isSearchVisible}
@@ -140,12 +154,13 @@ export default function MainPage() {
         onToggle={() => setIsFavoritesOpen((open) => !open)}
       />
       <div className="map-toolbar">
-        <PlaceModeButton
-          label="Я здесь"
-          activeLabel="Нажмите, где вы..."
-          isActive={mode === "origin"}
-          onToggle={() => toggleMode("origin")}
-        />
+        <button
+          className="place-button"
+          type="button"
+          onClick={handleLocateUser}
+        >
+          Я здесь
+        </button>
         <PlaceModeButton
           label="Поставить светофор"
           activeLabel="Нажмите на карту..."
@@ -159,12 +174,13 @@ export default function MainPage() {
         settings={settings}
         onSettingsChange={setSettings}
       >
-        <PlaceModeButton
-          label="Я здесь"
-          activeLabel="Нажмите, где вы..."
-          isActive={mode === "origin"}
-          onToggle={() => toggleMode("origin")}
-        />
+        <button
+          className="place-button"
+          type="button"
+          onClick={handleLocateUser}
+        >
+          Я здесь
+        </button>
         {destination && (
           <button
             className="settings-panel__action"
@@ -215,15 +231,11 @@ export default function MainPage() {
           <span>Избранное</span>
         </button>
         <button
-          className={
-            mode === "origin"
-              ? "mobile-nav__button mobile-nav__button--active"
-              : "mobile-nav__button"
-          }
+          className="mobile-nav__button"
           type="button"
-          aria-pressed={mode === "origin"}
+          aria-label="Показать моё местоположение на карте"
           onClick={() => {
-            toggleMode("origin");
+            handleLocateUser();
             setIsSearchVisible(false);
             setIsFavoritesOpen(false);
             setIsMenuOpen(false);
@@ -254,7 +266,7 @@ export default function MainPage() {
       {destination && (
         <RouteCard
           destination={destination}
-          hasOrigin={origin !== null}
+          hasOrigin={activeOrigin !== null}
           route={route}
           isLoading={isLoading}
           isError={isError}
