@@ -39,6 +39,18 @@
     box-shadow: 0 0 0 4px rgba(30, 136, 229, 0.3);
 }
 
+.route-origin-marker {
+    display: grid;
+    place-items: center;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    background: #d85b36;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.45);
+    color: #ffffff;
+    font: 700 14px/1 system-ui, sans-serif;
+    text-align: center;
+}
+
 .map-toolbar {
     position: fixed;
     top: 16px;

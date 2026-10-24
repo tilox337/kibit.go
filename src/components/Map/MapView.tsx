@@ -57,6 +57,13 @@ const ORIGIN_ICON = divIcon({
   iconAnchor: [10, 10],
 });
 
+const ROUTE_ORIGIN_ICON = divIcon({
+  className: "route-origin-marker",
+  html: "A",
+  iconSize: [28, 28],
+  iconAnchor: [14, 14],
+});
+
 const ROUTE_STYLE = { color: "#1e88e5", weight: 6, opacity: 0.85 };
 
 // ---------- Мелкие компоненты ----------
@@ -101,6 +108,10 @@ export function DestinationMarker({ place }: { place: Place }) {
 // Метка «Я здесь»
 export function OriginMarker({ origin }: { origin: LatLng }) {
   return <Marker position={[origin.lat, origin.lng]} icon={ORIGIN_ICON} />;
+}
+
+export function RouteOriginMarker({ origin }: { origin: LatLng }) {
+  return <Marker position={[origin.lat, origin.lng]} icon={ROUTE_ORIGIN_ICON} />;
 }
 
 // Линия маршрута
@@ -281,7 +292,8 @@ export function PlaceModeButton({
 interface MapViewProps {
   lights: TrafficLightPoint[];
   isPlacing: boolean; // включён режим установки точки (светофора или «Я здесь»)
-  origin: LatLng | null; // точка «Я здесь»
+  userLocation: LatLng | null;
+  routeOrigin: LatLng | null;
   destination: Place | null; // выбранный пункт назначения
   route: Route | null;
   onMapClick: (lat: number, lng: number) => void;
@@ -292,7 +304,8 @@ interface MapViewProps {
 export default function MapView({
   lights,
   isPlacing,
-  origin,
+  userLocation,
+  routeOrigin,
   destination,
   route,
   onMapClick,
@@ -315,15 +328,15 @@ export default function MapView({
           maxZoom={MAP_MAX_ZOOM}
         />
         <MapClickHandler onClick={onMapClick} />
-        {/* Если есть «Я здесь», карту ведёт маршрут, иначе подлетаем к месту */}
-        <MapFlyTo target={origin} />
+        <MapFlyTo target={routeOrigin ?? userLocation} />
         <MapFlyTo
-          target={origin ? null : destination}
+          target={routeOrigin || userLocation ? null : destination}
           zoom={DESTINATION_ZOOM}
         />
         <MapFitRoute route={route} />
         {route && <RouteLine route={route} />}
-        {origin && <OriginMarker origin={origin} />}
+        {userLocation && <OriginMarker origin={userLocation} />}
+        {routeOrigin && <RouteOriginMarker origin={routeOrigin} />}
         {destination && <DestinationMarker place={destination} />}
         <TrafficLightLayer lights={lights} onDeleteLight={onDeleteLight} />
       </MapContainer>

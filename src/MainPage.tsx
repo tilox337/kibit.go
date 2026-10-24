@@ -29,13 +29,17 @@ export default function MainPage() {
     readStorage(SETTINGS_STORAGE_KEY, DEFAULT_SETTINGS),
   );
   const [mode, setMode] = useState<MapMode>("idle");
-  const [origin, setOrigin] = useState<LatLng | null>(null);
+  const [userLocation, setUserLocation] = useState<LatLng | null>(null);
+  const [routeOrigin, setRouteOrigin] = useState<LatLng | null>(null);
   const [destination, setDestination] = useState<Place | null>(null);
   const hasRequestedLocation = useRef(false);
-  const hasManualOrigin = useRef(false);
-  const { route, isLoading, isError } = useRoute(origin, destination, {
-    avoidTollRoads: settings.avoidTollRoads,
-  });
+  const hasManualLocation = useRef(false);
+  const activeOrigin = routeOrigin ?? userLocation;
+  const { route, isLoading, isError } = useRoute(
+    activeOrigin,
+    destination,
+    { avoidTollRoads: settings.avoidTollRoads },
+  );
 
   useEffect(() => {
     writeStorage(SETTINGS_STORAGE_KEY, settings);
@@ -55,8 +59,9 @@ export default function MainPage() {
 
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
-        if (!isCancelled && !hasManualOrigin.current) {
-          setOrigin({ lat: coords.latitude, lng: coords.longitude });
+        const location = { lat: coords.latitude, lng: coords.longitude };
+        if (!isCancelled && !hasManualLocation.current) {
+          setUserLocation(location);
         }
       },
       (error) => {
@@ -106,8 +111,8 @@ export default function MainPage() {
     if (mode === "light") {
       addLight(lat, lng);
     } else if (mode === "origin") {
-      hasManualOrigin.current = true;
-      setOrigin({ lat, lng });
+      hasManualLocation.current = true;
+      setUserLocation({ lat, lng });
     }
     setMode("idle");
     setIsMenuOpen(false);
@@ -118,7 +123,8 @@ export default function MainPage() {
       <MapView
         lights={lights}
         isPlacing={mode !== "idle"}
-        origin={origin}
+        userLocation={userLocation}
+        routeOrigin={routeOrigin}
         destination={destination}
         route={route}
         onMapClick={handleMapClick}
@@ -126,6 +132,10 @@ export default function MainPage() {
       />
       <SearchMenu
         onSelectPlace={setDestination}
+        onSelectOrigin={(place) =>
+          setRouteOrigin({ lat: place.lat, lng: place.lng })
+        }
+        onResetOrigin={() => setRouteOrigin(null)}
         isFavorite={isFavorite}
         onToggleFavorite={toggleFavorite}
         isMobileVisible={isSearchVisible}
@@ -254,7 +264,7 @@ export default function MainPage() {
       {destination && (
         <RouteCard
           destination={destination}
-          hasOrigin={origin !== null}
+          hasOrigin={activeOrigin !== null}
           route={route}
           isLoading={isLoading}
           isError={isError}

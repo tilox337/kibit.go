@@ -11,26 +11,33 @@ import "./SearchMenu.css";
 
 // Поле «Куда едем?»
 export function SearchInput({
+  label,
+  placeholder,
   value,
   onChange,
   onFocus,
   inputRef,
 }: {
+  label: string;
+  placeholder: string;
   value: string;
   onChange: (value: string) => void;
   onFocus: () => void;
   inputRef: React.RefObject<HTMLInputElement | null>;
 }) {
   return (
-    <input
-      ref={inputRef}
-      className="search-menu__input"
-      type="search"
-      placeholder="Куда едем?"
-      value={value}
-      onFocus={onFocus}
-      onChange={(event) => onChange(event.target.value)}
-    />
+    <label className="search-menu__field">
+      <span className="search-menu__label">{label}</span>
+      <input
+        ref={inputRef}
+        className="search-menu__input"
+        type="search"
+        placeholder={placeholder}
+        value={value}
+        onFocus={onFocus}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </label>
   );
 }
 
@@ -118,6 +125,8 @@ export function PlaceSection({
 
 interface SearchMenuProps {
   onSelectPlace: (place: Place) => void; // выбрали пункт назначения
+  onSelectOrigin: (place: Place) => void;
+  onResetOrigin: () => void;
   isFavorite: (placeId: string) => boolean;
   onToggleFavorite: (place: Place) => void;
   isMobileVisible: boolean;
@@ -152,27 +161,38 @@ function useCloseOnOutside(
 // Поле ввода. При клике на него выдвигаются результаты, история и рекомендации
 export default function SearchMenu({
   onSelectPlace,
+  onSelectOrigin,
+  onResetOrigin,
   isFavorite,
   onToggleFavorite,
   isMobileVisible,
   onMobileClose,
 }: SearchMenuProps) {
-  const [query, setQuery] = useState("");
+  const [destinationQuery, setDestinationQuery] = useState("");
+  const [originQuery, setOriginQuery] = useState("");
+  const [activeField, setActiveField] = useState<"origin" | "destination">(
+    "destination",
+  );
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const destinationInputRef = useRef<HTMLInputElement>(null);
+  const originInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (isMobileVisible) inputRef.current?.focus();
+    if (isMobileVisible) destinationInputRef.current?.focus();
   }, [isMobileVisible]);
 
-  const { results, isLoading, isSearching } = useSearchResults(query);
+  const destinationSearch = useSearchResults(destinationQuery);
+  const originSearch = useSearchResults(originQuery);
+  const activeSearch =
+    activeField === "origin" ? originSearch : destinationSearch;
   const recommendations = useRecommendations();
   const { history, addTrip } = useTripHistory();
 
   const close = () => {
     setIsOpen(false);
-    inputRef.current?.blur();
+    destinationInputRef.current?.blur();
+    originInputRef.current?.blur();
     onMobileClose();
   };
   useCloseOnOutside(menuRef, isOpen, close);
@@ -180,16 +200,29 @@ export default function SearchMenu({
   const handleSelect = (place: Place) => {
     addTrip(place);
     onSelectPlace(place);
-    setQuery(place.name);
+    setDestinationQuery(place.name);
     close();
   };
 
+  const handleSelectOrigin = (place: Place) => {
+    onSelectOrigin(place);
+    setOriginQuery(place.name);
+    setActiveField("destination");
+    destinationInputRef.current?.focus();
+  };
+
+  const handleOriginChange = (value: string) => {
+    setOriginQuery(value);
+    if (!value.trim()) onResetOrigin();
+  };
+
   const historyPlaces = history.map((record) => record.place);
+  const { results, isLoading, isSearching } = activeSearch;
   const showNothingFound = isSearching && !isLoading && results.length === 0;
 
   const sectionProps = {
     isFavorite,
-    onSelect: handleSelect,
+    onSelect: activeField === "origin" ? handleSelectOrigin : handleSelect,
     onToggleFavorite,
   };
 
@@ -203,10 +236,26 @@ export default function SearchMenu({
       ref={menuRef}
     >
       <SearchInput
-        value={query}
-        onChange={setQuery}
-        onFocus={() => setIsOpen(true)}
-        inputRef={inputRef}
+        label="Откуда"
+        placeholder="Моё местоположение"
+        value={originQuery}
+        onChange={handleOriginChange}
+        onFocus={() => {
+          setActiveField("origin");
+          setIsOpen(true);
+        }}
+        inputRef={originInputRef}
+      />
+      <SearchInput
+        label="Куда"
+        placeholder="Введите адрес или место"
+        value={destinationQuery}
+        onChange={setDestinationQuery}
+        onFocus={() => {
+          setActiveField("destination");
+          setIsOpen(true);
+        }}
+        inputRef={destinationInputRef}
       />
 
       {isOpen &&
@@ -217,12 +266,12 @@ export default function SearchMenu({
               <p className="search-menu__hint">Ничего не найдено</p>
             )}
             <PlaceSection
-              title="Результаты"
+              title={activeField === "origin" ? "Начало маршрута" : "Результаты"}
               places={results}
               {...sectionProps}
             />
           </>
-        ) : (
+        ) : activeField === "destination" ? (
           <>
             <PlaceSection
               title="Рекомендации"
@@ -235,7 +284,7 @@ export default function SearchMenu({
               {...sectionProps}
             />
           </>
-        ))}
+        ) : null)}
     </div>
   );
 }
