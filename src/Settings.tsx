@@ -6,6 +6,7 @@ export interface SettingsValue {
   volume: 0 | 1 | 2 | 3;
   theme: ThemeMode;
   avoidTollRoads: boolean;
+  highlightPassedRoute: boolean;
   cursorColor: string;
 }
 
@@ -103,6 +104,16 @@ export default function Settings({
         <div className="settings-panel__section">
           <h3 className="settings-panel__label">Маршрут</h3>
           {children}
+          <label className="settings-option">
+            <span>Подсвечивать пройденный маршрут серым</span>
+            <input
+              type="checkbox"
+              checked={settings.highlightPassedRoute}
+              onChange={(event) =>
+                updateSettings({ highlightPassedRoute: event.target.checked })
+              }
+            />
+          </label>
         </div>
         <section className="settings-panel__section">
           <h3 className="settings-panel__label">Громкость</h3>
