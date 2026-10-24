@@ -1,4 +1,3 @@
-import { useState } from "react";
 import type { Place } from "../../types/search";
 import { PlaceSection } from "../SearchMenu/SearchMenu";
 import "./FavoritesPanel.css";
@@ -13,7 +12,9 @@ export function FavoritesToggle({
 }) {
   return (
     <button
-      className={isOpen ? "favorites__toggle favorites__toggle--on" : "favorites__toggle"}
+      className={
+        isOpen ? "favorites__toggle favorites__toggle--on" : "favorites__toggle"
+      }
       onClick={onToggle}
       aria-label="Избранное"
       title="Избранное"
@@ -28,6 +29,8 @@ interface FavoritesPanelProps {
   isFavorite: (placeId: string) => boolean;
   onSelectPlace: (place: Place) => void;
   onToggleFavorite: (place: Place) => void;
+  isOpen: boolean;
+  onToggle: () => void;
 }
 
 // Звёздочка справа снизу, по клику открывает список избранного
@@ -36,12 +39,12 @@ export default function FavoritesPanel({
   isFavorite,
   onSelectPlace,
   onToggleFavorite,
+  isOpen,
+  onToggle,
 }: FavoritesPanelProps) {
-  const [isOpen, setIsOpen] = useState(false);
-
   const handleSelect = (place: Place) => {
     onSelectPlace(place);
-    setIsOpen(false);
+    onToggle();
   };
 
   return (
@@ -63,7 +66,7 @@ export default function FavoritesPanel({
           )}
         </div>
       )}
-      <FavoritesToggle isOpen={isOpen} onToggle={() => setIsOpen((open) => !open)} />
+      <FavoritesToggle isOpen={isOpen} onToggle={onToggle} />
     </div>
   );
 }

@@ -1,11 +1,13 @@
-import { divIcon } from "leaflet";
+import { divIcon, type Marker as LeafletMarker } from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   MapContainer,
   Marker,
   Polyline,
+  Popup,
   TileLayer,
+  ZoomControl,
   useMap,
   useMapEvents,
 } from "react-leaflet";
@@ -16,22 +18,27 @@ import {
   OSM_ATTRIBUTION,
   OSM_TILE_URL,
 } from "../../constants/map";
+import {
+  DEFAULT_GREEN_SECONDS,
+  DEFAULT_RED_SECONDS,
+  DEFAULT_START_HOUR,
+  YELLOW_SECONDS,
+} from "../../constants/trafficLight";
 import { ROUTE_FIT_PADDING } from "../../constants/route";
 import { DESTINATION_ZOOM } from "../../constants/search";
+import { fetchOSMTrafficSignals } from "../../api/trafficLightApi";
 import type { LatLng, Route } from "../../types/route";
 import type { Place } from "../../types/search";
 import type { TrafficLightPoint } from "../../types/trafficLight";
+import { getPhaseOffsetSeconds } from "../../utils/trafficLight";
+import TrafficLightPopup from "../TrafficLightPopup/TrafficLightPopup";
 import "./MapView.css";
+
+const TRAFFIC_LIGHT_POPUP_ZOOM = 16;
+const OSM_TRAFFIC_LIGHT_MIN_ZOOM = 16;
 
 const LIGHT_ICON = divIcon({
   className: "traffic-marker",
-  html: "🚦",
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-});
-
-const SELECTED_LIGHT_ICON = divIcon({
-  className: "traffic-marker traffic-marker--selected",
   html: "🚦",
   iconSize: [32, 32],
   iconAnchor: [16, 16],
@@ -50,17 +57,30 @@ const ORIGIN_ICON = divIcon({
   iconAnchor: [10, 10],
 });
 
+const ROUTE_ORIGIN_ICON = divIcon({
+  className: "route-origin-marker",
+  html: "A",
+  iconSize: [28, 28],
+  iconAnchor: [14, 14],
+});
+
 const ROUTE_STYLE = { color: "#1e88e5", weight: 6, opacity: 0.85 };
 
 // ---------- Мелкие компоненты ----------
 
 // Невидимый компонент: подлетает к пункту назначения, когда он меняется
-export function MapFlyTo({ target }: { target: Place | null }) {
+export function MapFlyTo({
+  target,
+  zoom,
+}: {
+  target: Place | LatLng | null;
+  zoom?: number;
+}) {
   const map = useMap();
 
   useEffect(() => {
-    if (target) map.flyTo([target.lat, target.lng], DESTINATION_ZOOM);
-  }, [target, map]);
+    if (target) map.flyTo([target.lat, target.lng], zoom ?? map.getZoom());
+  }, [target, zoom, map]);
 
   return null;
 }
@@ -71,7 +91,9 @@ export function MapFitRoute({ route }: { route: Route | null }) {
 
   useEffect(() => {
     if (route) {
-      map.fitBounds(route.points, { padding: [ROUTE_FIT_PADDING, ROUTE_FIT_PADDING] });
+      map.fitBounds(route.points, {
+        padding: [ROUTE_FIT_PADDING, ROUTE_FIT_PADDING],
+      });
     }
   }, [route, map]);
 
@@ -86,6 +108,10 @@ export function DestinationMarker({ place }: { place: Place }) {
 // Метка «Я здесь»
 export function OriginMarker({ origin }: { origin: LatLng }) {
   return <Marker position={[origin.lat, origin.lng]} icon={ORIGIN_ICON} />;
+}
+
+export function RouteOriginMarker({ origin }: { origin: LatLng }) {
+  return <Marker position={[origin.lat, origin.lng]} icon={ROUTE_ORIGIN_ICON} />;
 }
 
 // Линия маршрута
@@ -108,19 +134,133 @@ export function MapClickHandler({
 // Светофор на карте
 export function TrafficLightMarker({
   light,
-  isSelected,
-  onClick,
+  showPopup,
+  onDelete,
+  phaseNote,
 }: {
   light: TrafficLightPoint;
-  isSelected: boolean;
-  onClick: (id: string) => void;
+  showPopup: boolean;
+  onDelete?: (id: string) => void;
+  phaseNote?: string;
 }) {
+  const markerRef = useRef<LeafletMarker | null>(null);
+  const cycleLength = light.redSeconds + light.greenSeconds + YELLOW_SECONDS;
+  const phaseOffsetSeconds =
+    light.phaseOffsetSeconds ?? getPhaseOffsetSeconds(light.id, cycleLength);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      if (showPopup) markerRef.current?.openPopup();
+      else markerRef.current?.closePopup();
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [showPopup]);
+
   return (
-    <Marker
-      position={[light.lat, light.lng]}
-      icon={isSelected ? SELECTED_LIGHT_ICON : LIGHT_ICON}
-      eventHandlers={{ click: () => onClick(light.id) }}
-    />
+    <Marker ref={markerRef} position={[light.lat, light.lng]} icon={LIGHT_ICON}>
+      {showPopup && (
+        <Popup
+          autoClose={false}
+          autoPan={false}
+          closeButton={false}
+          closeOnClick={false}
+        >
+          <TrafficLightPopup
+            redSeconds={light.redSeconds}
+            greenSeconds={light.greenSeconds}
+            startHour={light.startHour}
+            phaseOffsetSeconds={phaseOffsetSeconds}
+            phaseNote={phaseNote}
+            onDelete={onDelete ? () => onDelete(light.id) : undefined}
+          />
+        </Popup>
+      )}
+    </Marker>
+  );
+}
+
+function TrafficLightLayer({
+  lights,
+  onDeleteLight,
+}: {
+  lights: TrafficLightPoint[];
+  onDeleteLight: (id: string) => void;
+}) {
+  const map = useMap();
+  const [zoom, setZoom] = useState(map.getZoom());
+  const [boundsVersion, setBoundsVersion] = useState(0);
+  const [osmLights, setOsmLights] = useState<TrafficLightPoint[]>([]);
+
+  useMapEvents({
+    moveend: () => {
+      setZoom(map.getZoom());
+      setBoundsVersion((version) => version + 1);
+      setOsmLights([]);
+    },
+  });
+
+  useEffect(() => {
+    if (zoom < OSM_TRAFFIC_LIGHT_MIN_ZOOM) return;
+
+    const bounds = map.getBounds();
+    const controller = new AbortController();
+
+    fetchOSMTrafficSignals(
+      {
+        west: bounds.getWest(),
+        south: bounds.getSouth(),
+        east: bounds.getEast(),
+        north: bounds.getNorth(),
+      },
+      controller.signal,
+    )
+      .then((signals) => {
+        const cycleLength =
+          DEFAULT_RED_SECONDS + DEFAULT_GREEN_SECONDS + YELLOW_SECONDS;
+        setOsmLights(
+          signals.map((signal) => {
+            const id = `osm-${signal.id}`;
+            return {
+              id,
+              lat: signal.lat,
+              lng: signal.lng,
+              redSeconds: DEFAULT_RED_SECONDS,
+              greenSeconds: DEFAULT_GREEN_SECONDS,
+              startHour: DEFAULT_START_HOUR,
+              phaseOffsetSeconds: getPhaseOffsetSeconds(id, cycleLength),
+            };
+          }),
+        );
+      })
+      .catch((error: unknown) => {
+        if (error instanceof Error && error.name === "AbortError") return;
+        console.error("Не удалось загрузить OSM-светофоры", error);
+      });
+
+    return () => controller.abort();
+  }, [boundsVersion, map, zoom]);
+
+  return (
+    <>
+      {lights.map((light) => (
+        <TrafficLightMarker
+          key={light.id}
+          light={light}
+          showPopup={zoom >= TRAFFIC_LIGHT_POPUP_ZOOM}
+          onDelete={onDeleteLight}
+        />
+      ))}
+      {zoom >= OSM_TRAFFIC_LIGHT_MIN_ZOOM &&
+        osmLights.map((light) => (
+          <TrafficLightMarker
+            key={light.id}
+            light={light}
+            showPopup={zoom >= TRAFFIC_LIGHT_POPUP_ZOOM}
+            phaseNote="Условные фазы: OSM не содержит расписание светофора"
+          />
+        ))}
+    </>
   );
 }
 
@@ -151,25 +291,25 @@ export function PlaceModeButton({
 
 interface MapViewProps {
   lights: TrafficLightPoint[];
-  selectedId: string | null;
   isPlacing: boolean; // включён режим установки точки (светофора или «Я здесь»)
-  origin: LatLng | null; // точка «Я здесь»
+  userLocation: LatLng | null;
+  routeOrigin: LatLng | null;
   destination: Place | null; // выбранный пункт назначения
   route: Route | null;
   onMapClick: (lat: number, lng: number) => void;
-  onLightClick: (id: string) => void;
+  onDeleteLight: (id: string) => void;
 }
 
 // Карта OpenStreetMap со светофорами и маршрутом
 export default function MapView({
   lights,
-  selectedId,
   isPlacing,
-  origin,
+  userLocation,
+  routeOrigin,
   destination,
   route,
   onMapClick,
-  onLightClick,
+  onDeleteLight,
 }: MapViewProps) {
   const wrapperClass = isPlacing ? "map-view map-view--placing" : "map-view";
 
@@ -179,27 +319,26 @@ export default function MapView({
         className="map-view__map"
         center={MAP_DEFAULT_CENTER}
         zoom={MAP_DEFAULT_ZOOM}
+        zoomControl={false}
       >
+        <ZoomControl position="topright" />
         <TileLayer
           url={OSM_TILE_URL}
           attribution={OSM_ATTRIBUTION}
           maxZoom={MAP_MAX_ZOOM}
         />
         <MapClickHandler onClick={onMapClick} />
-        {/* Если есть «Я здесь», карту ведёт маршрут, иначе подлетаем к месту */}
-        <MapFlyTo target={origin ? null : destination} />
+        <MapFlyTo target={routeOrigin ?? userLocation} />
+        <MapFlyTo
+          target={routeOrigin || userLocation ? null : destination}
+          zoom={DESTINATION_ZOOM}
+        />
         <MapFitRoute route={route} />
         {route && <RouteLine route={route} />}
-        {origin && <OriginMarker origin={origin} />}
+        {userLocation && <OriginMarker origin={userLocation} />}
+        {routeOrigin && <RouteOriginMarker origin={routeOrigin} />}
         {destination && <DestinationMarker place={destination} />}
-        {lights.map((light) => (
-          <TrafficLightMarker
-            key={light.id}
-            light={light}
-            isSelected={light.id === selectedId}
-            onClick={onLightClick}
-          />
-        ))}
+        <TrafficLightLayer lights={lights} onDeleteLight={onDeleteLight} />
       </MapContainer>
     </div>
   );

@@ -4,7 +4,12 @@ import {
   deleteTrafficLight,
   fetchTrafficLights,
 } from "../api/trafficLightApi";
-import { TICK_INTERVAL_MS } from "../constants/trafficLight";
+import {
+  DEFAULT_GREEN_SECONDS,
+  DEFAULT_RED_SECONDS,
+  TICK_INTERVAL_MS,
+  YELLOW_SECONDS,
+} from "../constants/trafficLight";
 import type {
   TrafficLightConfig,
   TrafficLightPoint,
@@ -13,6 +18,7 @@ import type {
 import {
   calcTrafficLightState,
   createTrafficLightPoint,
+  getPhaseOffsetSeconds,
   getSecondsOfDay,
 } from "../utils/trafficLight";
 
@@ -61,7 +67,24 @@ export function useTrafficLights() {
   }, []);
 
   const addLight = (lat: number, lng: number): TrafficLightPoint => {
-    const light = createTrafficLightPoint(lat, lng);
+    const cycleLength =
+      DEFAULT_RED_SECONDS + DEFAULT_GREEN_SECONDS + YELLOW_SECONDS;
+    const usedOffsets = new Set(
+      lights.map(
+        (light) =>
+          light.phaseOffsetSeconds ??
+          getPhaseOffsetSeconds(
+            light.id,
+            light.redSeconds + light.greenSeconds + YELLOW_SECONDS,
+          ),
+      ),
+    );
+    let phaseOffsetSeconds = (lights.length * 11) % cycleLength;
+    for (let attempt = 0; usedOffsets.has(phaseOffsetSeconds) && attempt < cycleLength; attempt++) {
+      phaseOffsetSeconds = (phaseOffsetSeconds + 1) % cycleLength;
+    }
+
+    const light = createTrafficLightPoint(lat, lng, phaseOffsetSeconds);
     setLights((current) => [...current, light]);
     createTrafficLight(light).catch((error) =>
       console.error("Не удалось сохранить светофор", error),

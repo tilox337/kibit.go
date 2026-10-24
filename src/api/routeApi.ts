@@ -11,15 +11,29 @@ interface OsrmResponse {
   }[];
 }
 
+export interface RouteOptions {
+  avoidTollRoads?: boolean;
+}
+
 // Адрес запроса. В OSRM координаты идут как «долгота,широта», через «;»
-export function buildRouteUrl(from: LatLng, to: LatLng): string {
+export function buildRouteUrl(
+  from: LatLng,
+  to: LatLng,
+  options: RouteOptions = {},
+): string {
   const coords = `${from.lng},${from.lat};${to.lng},${to.lat}`;
-  return `${ROUTE_URL}/${coords}?overview=full&geometries=geojson`;
+  const query = new URLSearchParams({ overview: "full", geometries: "geojson" });
+  if (options.avoidTollRoads) query.set("exclude", "toll");
+  return `${ROUTE_URL}/${coords}?${query}`;
 }
 
 // Маршрут по дорогам от точки from до точки to
-export async function fetchRoute(from: LatLng, to: LatLng): Promise<Route> {
-  const url = buildRouteUrl(from, to);
+export async function fetchRoute(
+  from: LatLng,
+  to: LatLng,
+  options: RouteOptions = {},
+): Promise<Route> {
+  const url = buildRouteUrl(from, to, options);
   console.log(`GET ${url}`);
 
   const response = await fetch(url);

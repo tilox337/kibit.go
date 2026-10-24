@@ -1,8 +1,5 @@
 import type { ReactNode } from "react";
-import {
-  COLOR_LABELS,
-  DEFAULT_START_HOUR,
-} from "../../constants/trafficLight";
+import { COLOR_LABELS, DEFAULT_START_HOUR } from "../../constants/trafficLight";
 import { useTrafficLight } from "../../hooks/useTrafficLight";
 import type { TrafficLightColor } from "../../types/trafficLight";
 import "./TrafficLightPopup.css";
@@ -36,7 +33,7 @@ export function ColorLabel({ color }: { color: TrafficLightColor }) {
   return <div className="traffic-popup__label">{COLOR_LABELS[color]}</div>;
 }
 
-// Сколько секунд до переключения. Для жёлтого (null) ничего не показываем
+// Сколько секунд осталось до смены цвета
 export function TimeLeft({ seconds }: { seconds: number | null }) {
   if (seconds === null) return null;
   return <div className="traffic-popup__time">{seconds} с</div>;
@@ -67,20 +64,25 @@ interface TrafficLightPopupProps {
   redSeconds: number; // сколько горит красный, сек
   greenSeconds: number; // сколько горит зелёный (вместе с морганием), сек
   startHour?: number; // во сколько начинается работа светофора, час (по умолчанию 5)
+  phaseOffsetSeconds?: number;
+  phaseNote?: string;
   onDelete?: () => void; // если передать, во всплывашке появится кнопка «Удалить»
 }
 
-// Всплывашка со светофором. Пока висит по центру экрана
+// Состояние светофора, закреплённое за его меткой на карте
 export default function TrafficLightPopup({
   redSeconds,
   greenSeconds,
   startHour = DEFAULT_START_HOUR,
+  phaseOffsetSeconds = 0,
+  phaseNote,
   onDelete,
 }: TrafficLightPopupProps) {
   const { isWorking, color, secondsLeft, isFlashing } = useTrafficLight({
     redSeconds,
     greenSeconds,
     startHour,
+    phaseOffsetSeconds,
   });
 
   return (
@@ -96,6 +98,7 @@ export default function TrafficLightPopup({
       ) : (
         <OffMessage startHour={startHour} />
       )}
+      {phaseNote && <div className="traffic-popup__note">{phaseNote}</div>}
       {onDelete && <DeleteButton onClick={onDelete} />}
     </PopupShell>
   );

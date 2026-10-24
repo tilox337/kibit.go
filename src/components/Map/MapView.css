@@ -1,63 +1,412 @@
 .map-view {
-  position: relative;
-  z-index: 0; /* своя область наложения, чтобы слои карты не лезли поверх всплывашки */
-  width: 100vw;
-  height: 100vh;
+    position: relative;
+    z-index: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
 }
 
 .map-view__map {
-  width: 100%;
-  height: 100%;
+    width: 100%;
+    height: 100%;
+}
+
+.leaflet-top.leaflet-right {
+    top: 50%;
+    transform: translateY(-50%);
 }
 
 .map-view--placing .leaflet-container {
-  cursor: crosshair;
+    cursor: var(--map-cursor, crosshair);
 }
 
-/* transform не трогаем: им Leaflet двигает маркер */
 .traffic-marker {
-  background: none;
-  border: none;
-  font-size: 28px;
-  line-height: 32px;
-  text-align: center;
+    background: none;
+    border: none;
+    font-size: 28px;
+    line-height: 32px;
+    text-align: center;
 }
 
 .traffic-marker--selected {
-  filter: drop-shadow(0 0 6px #1e88e5) drop-shadow(0 0 3px #1e88e5);
+    filter: drop-shadow(0 0 6px #1e88e5) drop-shadow(0 0 3px #1e88e5);
 }
 
-/* Точка «Я здесь» */
 .origin-marker {
-  background: #1e88e5;
-  border: 3px solid #ffffff;
-  border-radius: 50%;
-  box-shadow: 0 0 0 4px rgba(30, 136, 229, 0.3);
+    background: #1e88e5;
+    border: 3px solid #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 0 0 4px rgba(30, 136, 229, 0.3);
+}
+
+.route-origin-marker {
+    display: grid;
+    place-items: center;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    background: #d85b36;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.45);
+    color: #ffffff;
+    font: 700 14px/1 system-ui, sans-serif;
+    text-align: center;
 }
 
 .map-toolbar {
-  position: fixed;
-  top: 16px;
-  right: 16px;
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
 }
 
 .place-button {
-  padding: 12px 20px;
-  border: none;
-  border-radius: 12px;
-  background: #ffffff;
-  color: #1c1c1e;
-  font: 500 16px system-ui, sans-serif;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-  cursor: pointer;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 12px;
+    background: #ffffff;
+    color: #1c1c1e;
+    font: 500 16px system-ui, sans-serif;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    cursor: pointer;
 }
 
 .place-button--active {
-  background: #1e88e5;
-  color: #ffffff;
+    background: #1e88e5;
+    color: #ffffff;
+}
+
+.mobile-nav {
+    display: none;
+}
+
+@media (max-width: 700px) {
+
+    .map-toolbar,
+    .favorites__toggle {
+        display: none;
+    }
+
+    .mobile-nav {
+        position: fixed;
+        z-index: 1000;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 2px;
+        padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+        border-top: 1px solid #dedee3;
+        background: rgba(255, 255, 255, 0.97);
+        box-shadow: 0 -4px 18px rgba(0, 0, 0, 0.12);
+        font-family: system-ui, sans-serif;
+    }
+
+    .mobile-nav__button {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        min-width: 0;
+        min-height: 58px;
+        padding: 4px 2px;
+        border: 0;
+        border-radius: 8px;
+        background: transparent;
+        color: #44444b;
+        font: 500 11px system-ui, sans-serif;
+        cursor: pointer;
+    }
+
+    .mobile-nav__button>span:first-child {
+        font-size: 22px;
+        line-height: 1;
+    }
+
+    .mobile-nav__button--active {
+        background: #e8f2fb;
+        color: #1267a5;
+        font-weight: 600;
+    }
+
+    .settings-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 1100;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        box-sizing: border-box;
+        background: rgba(20, 24, 30, 0.36);
+    }
+
+    .settings-panel {
+        width: min(520px, 100%);
+        max-height: min(78dvh, 600px);
+        overflow-y: auto;
+        padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+        box-sizing: border-box;
+        border-radius: 16px 16px 0 0;
+        background: #ffffff;
+        box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.22);
+        animation: settings-sheet-enter 220ms ease-out both;
+        touch-action: pan-y;
+    }
+
+    @keyframes settings-sheet-enter {
+        from {
+            transform: translateY(100%);
+        }
+
+        to {
+            transform: translateY(0);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .settings-panel {
+            animation: none;
+        }
+    }
+
+    .settings-panel__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .settings-panel__title {
+        margin: 0;
+        color: #1c1c1e;
+        font: 600 18px system-ui, sans-serif;
+    }
+
+    .settings-panel__close {
+        flex: 0 0 40px;
+        width: 40px;
+        height: 40px;
+        border: 0;
+        border-radius: 50%;
+        background: #f0f0f4;
+        color: #1c1c1e;
+        font: 400 26px/1 system-ui, sans-serif;
+        cursor: pointer;
+    }
+
+    .settings-panel__section {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .settings-panel__hint {
+        margin: -2px 0 0;
+        color: #6b6b73;
+        font: 400 12px system-ui, sans-serif;
+    }
+
+    .settings-volume {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+    }
+
+    .settings-volume__button {
+        min-height: 44px;
+        border: 1px solid #d0d0d5;
+        border-radius: 8px;
+        background: #ffffff;
+        font-size: 20px;
+        cursor: pointer;
+    }
+
+    .settings-volume__button--active {
+        border-color: #1e88e5;
+        background: #e8f2fb;
+    }
+
+    .settings-theme {
+        min-width: 0;
+        margin: 0;
+        padding: 0;
+        border: 0;
+    }
+
+    .settings-theme .settings-panel__label {
+        padding: 0;
+    }
+
+    .settings-option,
+    .settings-color {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 44px;
+        color: #1c1c1e;
+        font: 400 14px system-ui, sans-serif;
+    }
+
+    .settings-option input {
+        flex: 0 0 auto;
+        width: 20px;
+        height: 20px;
+        accent-color: #1e88e5;
+    }
+
+    .settings-option--disabled {
+        color: #777780;
+    }
+
+    .settings-color input {
+        width: 48px;
+        height: 36px;
+        padding: 2px;
+        border: 1px solid #d0d0d5;
+        border-radius: 8px;
+        background: #ffffff;
+    }
+
+    .settings-panel__all {
+        min-height: 44px;
+        border: 0;
+        border-radius: 8px;
+        background: #f0f0f4;
+        color: #1c1c1e;
+        font: 600 14px system-ui, sans-serif;
+        cursor: pointer;
+    }
+
+    .settings-panel__label {
+        margin: 0;
+        color: #6b6b73;
+        font: 600 12px system-ui, sans-serif;
+        text-transform: uppercase;
+    }
+
+    .settings-panel .place-button,
+    .settings-panel__action {
+        width: 100%;
+        min-height: 48px;
+        padding: 10px 12px;
+        border: 0;
+        border-radius: 8px;
+        background: #f0f0f4;
+        color: #1c1c1e;
+        box-shadow: none;
+        font: 500 15px system-ui, sans-serif;
+        text-align: left;
+    }
+
+    .settings-panel .place-button--active {
+        background: #1e88e5;
+        color: #ffffff;
+    }
+
+    .settings-panel__action {
+        cursor: pointer;
+    }
+
+    .leaflet-top.leaflet-right {
+        right: 8px;
+    }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+    .map-toolbar {
+        top: auto;
+        bottom: calc(8px + env(safe-area-inset-bottom));
+        left: 12px;
+        right: auto;
+        flex-direction: row;
+        align-items: flex-end;
+    }
+
+    .place-button {
+        min-height: 44px;
+    }
+}
+
+:root[data-theme="dark"] .leaflet-tile-pane {
+    filter: brightness(0.72) invert(1) hue-rotate(180deg) saturate(0.8);
+}
+
+:root[data-theme="dark"] .leaflet-popup-content-wrapper,
+:root[data-theme="dark"] .search-menu,
+:root[data-theme="dark"] .favorites__panel,
+:root[data-theme="dark"] .route-card,
+:root[data-theme="dark"] .traffic-popup,
+:root[data-theme="dark"] .settings-panel {
+    background: #20242a;
+    color: #f5f5f7;
+}
+
+:root[data-theme="dark"] .settings-panel__title,
+:root[data-theme="dark"] .settings-option,
+:root[data-theme="dark"] .settings-color,
+:root[data-theme="dark"] .traffic-popup__label,
+:root[data-theme="dark"] .route-card__title {
+    color: #f5f5f7;
+}
+
+:root[data-theme="dark"] .settings-panel__label,
+:root[data-theme="dark"] .settings-panel__hint,
+:root[data-theme="dark"] .search-menu__hint,
+:root[data-theme="dark"] .place-item__address,
+:root[data-theme="dark"] .route-card__status {
+    color: #b7bbc2;
+}
+
+:root[data-theme="dark"] .mobile-nav {
+    border-color: #3a4048;
+    background: rgba(32, 36, 42, 0.97);
+}
+
+:root[data-theme="dark"] .mobile-nav__button {
+    color: #d7d9dd;
+}
+
+:root[data-theme="dark"] .mobile-nav__button--active {
+    background: #293d50;
+    color: #8fc8f4;
+}
+
+:root[data-theme="dark"] .settings-panel__close,
+:root[data-theme="dark"] .settings-panel__all,
+:root[data-theme="dark"] .settings-option input,
+:root[data-theme="dark"] .settings-volume__button,
+:root[data-theme="dark"] .route-card__cancel {
+    background: #343a42;
+    color: #f5f5f7;
+}
+
+:root[data-theme="dark"] .settings-volume__button--active {
+    border-color: #72b6ea;
+    background: #293d50;
+}
+
+:root[data-theme="dark"] .search-menu__input {
+    border-color: #454b54;
+    background: #292e35;
+    color: #f5f5f7;
+}
+
+:root[data-theme="dark"] .place-item__main:hover {
+    background: #343a42;
+}
+
+:root[data-theme="dark"] .place-button {
+    background: #20242a;
+    color: #f5f5f7;
+}
+
+:root[data-theme="dark"] .place-button--active {
+    background: #1e88e5;
+    color: #ffffff;
 }
