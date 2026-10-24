@@ -65,6 +65,34 @@ const ROUTE_ORIGIN_ICON = divIcon({
 });
 
 const ROUTE_STYLE = { color: "#1e88e5", weight: 6, opacity: 0.85 };
+const PASSED_ROUTE_STYLE = {
+  color: "#555555",
+  weight: 6,
+  opacity: 1.0,
+}; // Серый стиль для пройденного пути
+
+function findClosestPointIndex(
+  userLoc: LatLng,
+  points: (LatLng | [number, number])[],
+): number {
+  let minDistance = Infinity;
+  let closestIndex = 0;
+
+  points.forEach((point, index) => {
+    const ptLat = Array.isArray(point) ? point[0] : point.lat;
+    const ptLng = Array.isArray(point) ? point[1] : point.lng;
+
+    // Обычное евклидово расстояние (для малых дистанций этого более чем достаточно и это быстро)
+    const distance =
+      Math.pow(userLoc.lat - ptLat, 2) + Math.pow(userLoc.lng - ptLng, 2);
+
+    if (distance < minDistance) {
+      minDistance = distance;
+      closestIndex = index;
+    }
+  });
+  return closestIndex;
+}
 
 // ---------- Мелкие компоненты ----------
 
@@ -137,9 +165,30 @@ export function RouteOriginMarker({ origin }: { origin: LatLng }) {
   );
 }
 
-// Линия маршрута
-export function RouteLine({ route }: { route: Route }) {
-  return <Polyline positions={route.points} pathOptions={ROUTE_STYLE} />;
+//Линия маршрута
+export function RouteLine({
+  route,
+  userLocation,
+}: {
+  route: Route;
+  userLocation: LatLng | null;
+}) {
+  if (!userLocation || !route.points.length) {
+    return <Polyline positions={route.points} pathOptions={ROUTE_STYLE} />;
+  }
+  const closestIndex = findClosestPointIndex(userLocation, route.points);
+  const passedPoints = route.points.slice(0, closestIndex + 1);
+  const remainingPoints = route.points.slice(closestIndex);
+  return (
+    <>
+      {passedPoints.length > 1 && (
+        <Polyline positions={passedPoints} pathOptions={PASSED_ROUTE_STYLE} />
+      )}
+      {remainingPoints.length > 1 && (
+        <Polyline positions={remainingPoints} pathOptions={ROUTE_STYLE} />
+      )}
+    </>
+  );
 }
 
 // Невидимый компонент: ловит клики по карте и отдаёт координаты
@@ -363,7 +412,7 @@ export default function MapView({
           zoom={DESTINATION_ZOOM}
         />
         <MapFitRoute route={route} />
-        {route && <RouteLine route={route} />}
+        {route && <RouteLine route={route} userLocation={userLocation} />}
         {userLocation && <OriginMarker origin={userLocation} />}
         {routeOrigin && <RouteOriginMarker origin={routeOrigin} />}
         {destination && <DestinationMarker place={destination} />}
