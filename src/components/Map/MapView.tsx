@@ -85,6 +85,27 @@ export function MapFlyTo({
   return null;
 }
 
+export function MapFocusOnUser({
+  location,
+  request,
+}: {
+  location: LatLng | null;
+  request: number;
+}) {
+  const map = useMap();
+  const locationRef = useRef(location);
+  locationRef.current = location;
+
+  useEffect(() => {
+    const currentLocation = locationRef.current;
+    if (currentLocation) {
+      map.flyTo([currentLocation.lat, currentLocation.lng], map.getZoom());
+    }
+  }, [map, request]);
+
+  return null;
+}
+
 // Невидимый компонент: вписывает маршрут в экран, когда он построен
 export function MapFitRoute({ route }: { route: Route | null }) {
   const map = useMap();
@@ -111,7 +132,9 @@ export function OriginMarker({ origin }: { origin: LatLng }) {
 }
 
 export function RouteOriginMarker({ origin }: { origin: LatLng }) {
-  return <Marker position={[origin.lat, origin.lng]} icon={ROUTE_ORIGIN_ICON} />;
+  return (
+    <Marker position={[origin.lat, origin.lng]} icon={ROUTE_ORIGIN_ICON} />
+  );
 }
 
 // Линия маршрута
@@ -293,6 +316,7 @@ interface MapViewProps {
   lights: TrafficLightPoint[];
   isPlacing: boolean; // включён режим установки точки (светофора или «Я здесь»)
   userLocation: LatLng | null;
+  userLocationFocusRequest: number;
   routeOrigin: LatLng | null;
   destination: Place | null; // выбранный пункт назначения
   route: Route | null;
@@ -305,6 +329,7 @@ export default function MapView({
   lights,
   isPlacing,
   userLocation,
+  userLocationFocusRequest,
   routeOrigin,
   destination,
   route,
@@ -328,7 +353,11 @@ export default function MapView({
           maxZoom={MAP_MAX_ZOOM}
         />
         <MapClickHandler onClick={onMapClick} />
-        <MapFlyTo target={routeOrigin ?? userLocation} />
+        <MapFlyTo target={routeOrigin} />
+        <MapFocusOnUser
+          location={userLocation}
+          request={userLocationFocusRequest}
+        />
         <MapFlyTo
           target={routeOrigin || userLocation ? null : destination}
           zoom={DESTINATION_ZOOM}

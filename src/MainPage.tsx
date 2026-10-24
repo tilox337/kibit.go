@@ -30,11 +30,11 @@ export default function MainPage() {
   );
   const [mode, setMode] = useState<MapMode>("idle");
   const [userLocation, setUserLocation] = useState<LatLng | null>(null);
+  const [userLocationFocusRequest, setUserLocationFocusRequest] = useState(0);
   const [routeOrigin, setRouteOrigin] = useState<LatLng | null>(null);
   const [destination, setDestination] = useState<Place | null>(null);
-  const hasRequestedLocation = useRef(false);
-  const hasManualLocation = useRef(false);
-  const isMounted = useRef(false);
+  const hasInitialLocationFix = useRef(false);
+  const shouldFocusWhenLocated = useRef(false);
   const activeOrigin = routeOrigin ?? userLocation;
   const { route, isLoading, isError } = useRoute(activeOrigin, destination, {
     avoidTollRoads: settings.avoidTollRoads,
@@ -45,37 +45,33 @@ export default function MainPage() {
   }, [settings]);
 
   useEffect(() => {
-    isMounted.current = true;
-    return () => {
-      isMounted.current = false;
-    };
-  }, []);
+    if (!navigator.geolocation) return;
 
-  useEffect(() => {
-    if (
-      !window.matchMedia("(max-width: 700px)").matches ||
-      !navigator.geolocation ||
-      hasRequestedLocation.current
-    ) {
-      return;
-    }
-
-    hasRequestedLocation.current = true;
-
-    navigator.geolocation.getCurrentPosition(
+    let isActive = true;
+    const watchId = navigator.geolocation.watchPosition(
       ({ coords }) => {
+        if (!isActive) return;
         const location = { lat: coords.latitude, lng: coords.longitude };
-        if (isMounted.current && !hasManualLocation.current) {
-          setUserLocation(location);
+        setUserLocation(location);
+
+        if (!hasInitialLocationFix.current || shouldFocusWhenLocated.current) {
+          hasInitialLocationFix.current = true;
+          shouldFocusWhenLocated.current = false;
+          setUserLocationFocusRequest((request) => request + 1);
         }
       },
       (error) => {
-        if (isMounted.current && error.code !== error.PERMISSION_DENIED) {
+        if (isActive && error.code !== error.PERMISSION_DENIED) {
           console.warn("Не удалось определить местоположение", error);
         }
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 },
     );
+
+    return () => {
+      isActive = false;
+      navigator.geolocation.clearWatch(watchId);
+    };
   }, []);
 
   useEffect(() => {
@@ -103,17 +99,23 @@ export default function MainPage() {
     return () => mediaQuery.removeEventListener("change", applyTheme);
   }, [settings.theme, settings.cursorColor]);
 
+  const handleLocateUser = () => {
+    if (userLocation) {
+      shouldFocusWhenLocated.current = false;
+      setUserLocationFocusRequest((request) => request + 1);
+    } else {
+      shouldFocusWhenLocated.current = true;
+    }
+  };
+
   // Включить режим установки или выключить, если он уже включён
   const toggleMode = (target: MapMode) =>
     setMode((current) => (current === target ? "idle" : target));
 
-  // Клик по карте: ставим светофор или «Я здесь», в обычном режиме снимаем выбор
+  // Клик по карте: ставим светофор; в обычном режиме снимаем выбор
   const handleMapClick = (lat: number, lng: number) => {
     if (mode === "light") {
       addLight(lat, lng);
-    } else if (mode === "origin") {
-      hasManualLocation.current = true;
-      setUserLocation({ lat, lng });
     }
     setMode("idle");
     setIsMenuOpen(false);
@@ -125,6 +127,7 @@ export default function MainPage() {
         lights={lights}
         isPlacing={mode !== "idle"}
         userLocation={userLocation}
+        userLocationFocusRequest={userLocationFocusRequest}
         routeOrigin={routeOrigin}
         destination={destination}
         route={route}
@@ -151,12 +154,13 @@ export default function MainPage() {
         onToggle={() => setIsFavoritesOpen((open) => !open)}
       />
       <div className="map-toolbar">
-        <PlaceModeButton
-          label="Я здесь"
-          activeLabel="Нажмите, где вы..."
-          isActive={mode === "origin"}
-          onToggle={() => toggleMode("origin")}
-        />
+        <button
+          className="place-button"
+          type="button"
+          onClick={handleLocateUser}
+        >
+          Я здесь
+        </button>
         <PlaceModeButton
           label="Поставить светофор"
           activeLabel="Нажмите на карту..."
@@ -170,12 +174,13 @@ export default function MainPage() {
         settings={settings}
         onSettingsChange={setSettings}
       >
-        <PlaceModeButton
-          label="Я здесь"
-          activeLabel="Нажмите, где вы..."
-          isActive={mode === "origin"}
-          onToggle={() => toggleMode("origin")}
-        />
+        <button
+          className="place-button"
+          type="button"
+          onClick={handleLocateUser}
+        >
+          Я здесь
+        </button>
         {destination && (
           <button
             className="settings-panel__action"
@@ -226,15 +231,11 @@ export default function MainPage() {
           <span>Избранное</span>
         </button>
         <button
-          className={
-            mode === "origin"
-              ? "mobile-nav__button mobile-nav__button--active"
-              : "mobile-nav__button"
-          }
+          className="mobile-nav__button"
           type="button"
-          aria-pressed={mode === "origin"}
+          aria-label="Показать моё местоположение на карте"
           onClick={() => {
-            toggleMode("origin");
+            handleLocateUser();
             setIsSearchVisible(false);
             setIsFavoritesOpen(false);
             setIsMenuOpen(false);

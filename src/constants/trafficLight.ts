@@ -13,8 +13,8 @@ export const DEFAULT_START_HOUR = 5;
 export const DEFAULT_RED_SECONDS = 30;
 export const DEFAULT_GREEN_SECONDS = 20;
 
-// Как часто проверяем время (мс). Меньше секунды, чтобы не пропускать смену цвета
-export const TICK_INTERVAL_MS = 250;
+// Как часто проверяем время (мс)
+export const TICK_INTERVAL_MS = 1000;
 
 export const SECONDS_IN_HOUR = 60 * 60;
 
