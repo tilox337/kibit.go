@@ -34,16 +34,22 @@ export default function MainPage() {
   const [destination, setDestination] = useState<Place | null>(null);
   const hasRequestedLocation = useRef(false);
   const hasManualLocation = useRef(false);
+  const isMounted = useRef(false);
   const activeOrigin = routeOrigin ?? userLocation;
-  const { route, isLoading, isError } = useRoute(
-    activeOrigin,
-    destination,
-    { avoidTollRoads: settings.avoidTollRoads },
-  );
+  const { route, isLoading, isError } = useRoute(activeOrigin, destination, {
+    avoidTollRoads: settings.avoidTollRoads,
+  });
 
   useEffect(() => {
     writeStorage(SETTINGS_STORAGE_KEY, settings);
   }, [settings]);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (
@@ -55,26 +61,21 @@ export default function MainPage() {
     }
 
     hasRequestedLocation.current = true;
-    let isCancelled = false;
 
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
         const location = { lat: coords.latitude, lng: coords.longitude };
-        if (!isCancelled && !hasManualLocation.current) {
+        if (isMounted.current && !hasManualLocation.current) {
           setUserLocation(location);
         }
       },
       (error) => {
-        if (error.code !== error.PERMISSION_DENIED) {
+        if (isMounted.current && error.code !== error.PERMISSION_DENIED) {
           console.warn("Не удалось определить местоположение", error);
         }
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
     );
-
-    return () => {
-      isCancelled = true;
-    };
   }, []);
 
   useEffect(() => {
