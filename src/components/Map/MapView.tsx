@@ -169,13 +169,21 @@ export function RouteOriginMarker({ origin }: { origin: LatLng }) {
 export function RouteLine({
   route,
   userLocation,
+
+  highlightPassedRoute,
   isRouteStarted,
 }: {
   route: Route;
   userLocation: LatLng | null;
+  highlightPassedRoute: boolean;
   isRouteStarted: boolean;
 }) {
-  if (!isRouteStarted || !userLocation || !route.points.length) {
+  if (
+    !highlightPassedRoute ||
+    !isRouteStarted ||
+    !userLocation ||
+    !route.points.length
+  ) {
     return <Polyline positions={route.points} pathOptions={ROUTE_STYLE} />;
   }
   const closestIndex = findClosestPointIndex(userLocation, route.points);
@@ -372,6 +380,7 @@ interface MapViewProps {
   destination: Place | null; // выбранный пункт назначения
   route: Route | null;
   isRouteStarted: boolean;
+  highlightPassedRoute: boolean;
   onMapClick: (lat: number, lng: number) => void;
   onDeleteLight: (id: string) => void;
 }
@@ -386,6 +395,7 @@ export default function MapView({
   destination,
   route,
   isRouteStarted,
+  highlightPassedRoute,
   onMapClick,
   onDeleteLight,
 }: MapViewProps) {
@@ -412,17 +422,16 @@ export default function MapView({
           request={userLocationFocusRequest}
         />
 
-        {!isRouteStarted && (
-          <MapFlyTo
-            target={routeOrigin || userLocation ? null : destination}
-            zoom={DESTINATION_ZOOM}
-          />
-        )}
-        {!isRouteStarted && <MapFitRoute route={route} />}
+        <MapFlyTo
+          target={routeOrigin || userLocation ? null : destination}
+          zoom={DESTINATION_ZOOM}
+        />
+        <MapFitRoute route={route} />
         {route && (
           <RouteLine
             route={route}
             userLocation={userLocation}
+            highlightPassedRoute={highlightPassedRoute}
             isRouteStarted={isRouteStarted}
           />
         )}

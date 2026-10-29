@@ -16,6 +16,7 @@ const DEFAULT_SETTINGS: SettingsValue = {
   volume: 2,
   theme: "system",
   avoidTollRoads: false,
+  highlightPassedRoute: true,
   cursorColor: "#1e88e5",
 };
 
@@ -25,9 +26,10 @@ export default function MainPage() {
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isFavoritesOpen, setIsFavoritesOpen] = useState(false);
-  const [settings, setSettings] = useState(() =>
-    readStorage(SETTINGS_STORAGE_KEY, DEFAULT_SETTINGS),
-  );
+  const [settings, setSettings] = useState<SettingsValue>(() => ({
+    ...DEFAULT_SETTINGS,
+    ...readStorage<Partial<SettingsValue>>(SETTINGS_STORAGE_KEY, {}),
+  }));
   const [mode, setMode] = useState<MapMode>("idle");
   const [userLocation, setUserLocation] = useState<LatLng | null>(null);
   const [userLocationFocusRequest, setUserLocationFocusRequest] = useState(0);
@@ -137,6 +139,7 @@ export default function MainPage() {
         destination={destination}
         route={route}
         isRouteStarted={isRouteStarted}
+        highlightPassedRoute={settings.highlightPassedRoute}
         onMapClick={handleMapClick}
         onDeleteLight={removeLight}
       />
