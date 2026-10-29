@@ -35,6 +35,7 @@ export default function MainPage() {
   const [destination, setDestination] = useState<Place | null>(null);
   const hasInitialLocationFix = useRef(false);
   const shouldFocusWhenLocated = useRef(false);
+  const [isRouteStarted, setIsRouteStarted] = useState(false);
   const activeOrigin = routeOrigin ?? userLocation;
   const { route, isLoading, isError } = useRoute(activeOrigin, destination, {
     avoidTollRoads: settings.avoidTollRoads,
@@ -121,6 +122,10 @@ export default function MainPage() {
     setIsMenuOpen(false);
   };
 
+  const handleCancelRoute = () => {
+    setDestination(null);
+    setIsRouteStarted(false);
+  };
   return (
     <>
       <MapView
@@ -131,6 +136,7 @@ export default function MainPage() {
         routeOrigin={routeOrigin}
         destination={destination}
         route={route}
+        isRouteStarted={isRouteStarted}
         onMapClick={handleMapClick}
         onDeleteLight={removeLight}
       />
@@ -264,14 +270,78 @@ export default function MainPage() {
         </button>
       </nav>
       {destination && (
-        <RouteCard
-          destination={destination}
-          hasOrigin={activeOrigin !== null}
-          route={route}
-          isLoading={isLoading}
-          isError={isError}
-          onCancel={() => setDestination(null)}
-        />
+        <div
+          style={{
+            position: "fixed",
+            bottom: "100px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "calc(100% - 32px)",
+            maxWidth: "400px",
+            zIndex: 1100,
+            display: "flex",
+            flexDirection: "column",
+            gap: "8px",
+          }}
+        >
+          <RouteCard
+            destination={destination}
+            hasOrigin={activeOrigin !== null}
+            route={route}
+            isLoading={isLoading}
+            isError={isError}
+            onCancel={() => {
+              setDestination(null);
+              setIsRouteStarted(false);
+            }}
+          />
+
+          {route && !isLoading && !isError && (
+            <div style={{ width: "100%" }}>
+              {!isRouteStarted ? (
+                <button
+                  className="place-button"
+                  type="button"
+                  style={{
+                    width: "100%",
+                    backgroundColor: "#1e88e5",
+                    color: "white",
+                    padding: "12px",
+                    borderRadius: "8px",
+                    fontWeight: "bold",
+                    boxShadow: "0 4px 10px rgba(0,0,0,0.3)",
+                  }}
+                  onClick={() => setIsRouteStarted(true)}
+                >
+                  Начать путь
+                </button>
+              ) : (
+                <button
+                  className="place-button"
+                  type="button"
+                  style={{
+                    width: "100%",
+                    backgroundColor: "#e53935",
+                    color: "white",
+                    padding: "12px",
+                    borderRadius: "8px",
+                    fontWeight: "bold",
+                    boxShadow: "0 4px 10px rgba(0,0,0,0.3)",
+                  }}
+                  onClick={() => {
+                    setIsRouteStarted(false);
+                    setDestination(null);
+                    if (typeof setRouteOrigin === "function") {
+                      setRouteOrigin(null);
+                    }
+                  }}
+                >
+                  Остановить маршрут
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       )}
     </>
   );
