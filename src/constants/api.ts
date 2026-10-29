@@ -1,5 +1,5 @@
-// Адрес бэка. Поменять на настоящий, когда он появится
-export const API_URL = "https://api.example.com";
+// Пустая строка: запросы идут на тот же origin, Vite проксирует /api/v1 на Go :8080.
+export const API_URL = "";
 
 export const TRAFFIC_LIGHTS_ENDPOINT = "/traffic-lights";
 

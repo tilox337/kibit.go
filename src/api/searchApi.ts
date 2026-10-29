@@ -5,8 +5,6 @@ import {
   HISTORY_URL,
   MAX_HISTORY_ITEMS,
   RECOMMENDATIONS_URL,
-  SEARCH_LANGUAGE,
-  SEARCH_RESULTS_LIMIT,
   SEARCH_URL,
   STUB_PLACES,
   STUB_RECOMMENDED_IDS,
@@ -14,50 +12,34 @@ import {
 import type { Place, TripRecord } from "../types/search";
 import { readStorage, writeStorage } from "../utils/storage";
 
-// Ответ Nominatim (только то, что нам нужно). Координаты приходят строками
-interface NominatimItem {
-  osm_type: string;
-  osm_id: number;
+// Тело GET /api/v1/search/places. Координаты приходят строками.
+interface SearchHit {
+  place_id: number;
+  display_name: string;
   lat: string;
   lon: string;
-  name?: string;
-  display_name: string;
 }
 
-// Адрес запроса поиска
-export function buildSearchUrl(query: string): string {
-  const params = new URLSearchParams({
-    q: query,
-    format: "jsonv2",
-    limit: String(SEARCH_RESULTS_LIMIT),
-    "accept-language": SEARCH_LANGUAGE,
-  });
-  return `${SEARCH_URL}?${params.toString()}`;
-}
-
-// Nominatim -> наше место. Название — первая часть адреса, если своего имени нет
-export function nominatimToPlace(item: NominatimItem): Place {
+function searchHitToPlace(item: SearchHit): Place {
   return {
-    id: `${item.osm_type}-${item.osm_id}`,
-    name: item.name || item.display_name.split(",")[0].trim(),
+    id: String(item.place_id),
+    name: item.display_name.split(",")[0].trim(),
     address: item.display_name,
     lat: Number(item.lat),
     lng: Number(item.lon),
   };
 }
 
-// Поиск настоящих адресов и мест
+// Поиск адресов и мест через Go.
 export async function searchPlaces(query: string): Promise<Place[]> {
-  const url = buildSearchUrl(query);
-  console.log(`GET ${url}`);
-
-  const response = await fetch(url);
+  const params = new URLSearchParams({ q: query });
+  const response = await fetch(`${SEARCH_URL}?${params}`);
   if (!response.ok) {
     throw new Error(`Сервис поиска ответил ${response.status}`);
   }
 
-  const items = (await response.json()) as NominatimItem[];
-  return items.map(nominatimToPlace);
+  const items = (await response.json()) as SearchHit[];
+  return items.map(searchHitToPlace);
 }
 
 // Функции ниже ЗАГЛУШКИ: пишут в консоль и работают с localStorage.

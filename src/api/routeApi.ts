@@ -1,56 +1,41 @@
-import { ROUTE_URL } from "../constants/route";
+import { API_URL } from "../constants/api";
 import type { LatLng, Route } from "../types/route";
 
-// Ответ OSRM (только то, что нам нужно)
-interface OsrmResponse {
-  code: string;
-  routes?: {
-    distance: number; // метры
-    duration: number; // секунды
-    geometry: { coordinates: [number, number][] }; // [долгота, широта]
-  }[];
+interface RouteResponse {
+  route: {
+    distance_m: number;
+    duration_s: number;
+    geometry: { coordinates: [number, number][] };
+  };
 }
 
 export interface RouteOptions {
   avoidTollRoads?: boolean;
 }
 
-// Адрес запроса. В OSRM координаты идут как «долгота,широта», через «;»
-export function buildRouteUrl(
-  from: LatLng,
-  to: LatLng,
-  options: RouteOptions = {},
-): string {
-  const coords = `${from.lng},${from.lat};${to.lng},${to.lat}`;
-  const query = new URLSearchParams({ overview: "full", geometries: "geojson" });
-  if (options.avoidTollRoads) query.set("exclude", "toll");
-  return `${ROUTE_URL}/${coords}?${query}`;
-}
-
-// Маршрут по дорогам от точки from до точки to
+// Маршрут от точки from до точки to. Go пока отдаёт прямую, не путь по дорогам.
 export async function fetchRoute(
   from: LatLng,
   to: LatLng,
-  options: RouteOptions = {},
+  _options: RouteOptions = {},
 ): Promise<Route> {
-  const url = buildRouteUrl(from, to, options);
-  console.log(`GET ${url}`);
-
-  const response = await fetch(url);
+  const response = await fetch(`${API_URL}/api/v1/routes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      start: { lat: from.lat, lon: from.lng },
+      end: { lat: to.lat, lon: to.lng },
+      mode: "car",
+    }),
+  });
   if (!response.ok) {
     throw new Error(`Сервис маршрутов ответил ${response.status}`);
   }
 
-  const data = (await response.json()) as OsrmResponse;
-  const best = data.routes?.[0];
-  if (data.code !== "Ok" || !best) {
-    throw new Error(`Маршрут не найден (${data.code})`);
-  }
-
+  const data = (await response.json()) as RouteResponse;
   return {
-    // Leaflet ждёт [широта, долгота], а OSRM отдаёт наоборот
-    points: best.geometry.coordinates.map(([lng, lat]) => [lat, lng]),
-    distanceMeters: best.distance,
-    durationSeconds: best.duration,
+    points: data.route.geometry.coordinates.map(([lng, lat]) => [lat, lng]),
+    distanceMeters: data.route.distance_m,
+    durationSeconds: data.route.duration_s,
   };
 }
