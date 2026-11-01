@@ -124,10 +124,6 @@ export default function MainPage() {
     setIsMenuOpen(false);
   };
 
-  const handleCancelRoute = () => {
-    setDestination(null);
-    setIsRouteStarted(false);
-  };
   return (
     <>
       <MapView
@@ -274,18 +270,11 @@ export default function MainPage() {
       </nav>
       {destination && (
         <div
-          style={{
-            position: "fixed",
-            bottom: "100px",
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: "calc(100% - 32px)",
-            maxWidth: "400px",
-            zIndex: 1100,
-            display: "flex",
-            flexDirection: "column",
-            gap: "8px",
-          }}
+          className={
+            isRouteStarted
+              ? "route-controls route-controls--started"
+              : "route-controls"
+          }
         >
           <RouteCard
             destination={destination}
@@ -299,50 +288,14 @@ export default function MainPage() {
             }}
           />
 
-          {route && !isLoading && !isError && (
-            <div style={{ width: "100%" }}>
-              {!isRouteStarted ? (
-                <button
-                  className="place-button"
-                  type="button"
-                  style={{
-                    width: "100%",
-                    backgroundColor: "#1e88e5",
-                    color: "white",
-                    padding: "12px",
-                    borderRadius: "8px",
-                    fontWeight: "bold",
-                    boxShadow: "0 4px 10px rgba(0,0,0,0.3)",
-                  }}
-                  onClick={() => setIsRouteStarted(true)}
-                >
-                  Начать путь
-                </button>
-              ) : (
-                <button
-                  className="place-button"
-                  type="button"
-                  style={{
-                    width: "100%",
-                    backgroundColor: "#e53935",
-                    color: "white",
-                    padding: "12px",
-                    borderRadius: "8px",
-                    fontWeight: "bold",
-                    boxShadow: "0 4px 10px rgba(0,0,0,0.3)",
-                  }}
-                  onClick={() => {
-                    setIsRouteStarted(false);
-                    setDestination(null);
-                    if (typeof setRouteOrigin === "function") {
-                      setRouteOrigin(null);
-                    }
-                  }}
-                >
-                  Остановить маршрут
-                </button>
-              )}
-            </div>
+          {route && !isLoading && !isError && !isRouteStarted && (
+            <button
+              className="place-button route-controls__start"
+              type="button"
+              onClick={() => setIsRouteStarted(true)}
+            >
+              Начать путь
+            </button>
           )}
         </div>
       )}
