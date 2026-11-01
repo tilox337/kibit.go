@@ -19,9 +19,6 @@ import {
   OSM_TILE_URL,
 } from "../../constants/map";
 import {
-  DEFAULT_GREEN_SECONDS,
-  DEFAULT_RED_SECONDS,
-  DEFAULT_START_HOUR,
   YELLOW_SECONDS,
 } from "../../constants/trafficLight";
 import { ROUTE_FIT_PADDING } from "../../constants/route";
@@ -252,6 +249,8 @@ export function TrafficLightMarker({
             redSeconds={light.redSeconds}
             greenSeconds={light.greenSeconds}
             startHour={light.startHour}
+            activeFromSeconds={light.activeFromSeconds}
+            activeUntilSeconds={light.activeUntilSeconds}
             phaseOffsetSeconds={phaseOffsetSeconds}
             phaseNote={phaseNote}
             onDelete={onDelete ? () => onDelete(light.id) : undefined}
@@ -298,8 +297,6 @@ function TrafficLightLayer({
       controller.signal,
     )
       .then((signals) => {
-        const cycleLength =
-          DEFAULT_RED_SECONDS + DEFAULT_GREEN_SECONDS + YELLOW_SECONDS;
         setOsmLights(
           signals.map((signal) => {
             const id = `osm-${signal.id}`;
@@ -307,10 +304,12 @@ function TrafficLightLayer({
               id,
               lat: signal.lat,
               lng: signal.lng,
-              redSeconds: DEFAULT_RED_SECONDS,
-              greenSeconds: DEFAULT_GREEN_SECONDS,
-              startHour: DEFAULT_START_HOUR,
-              phaseOffsetSeconds: getPhaseOffsetSeconds(id, cycleLength),
+              redSeconds: signal.redSeconds,
+              greenSeconds: signal.greenSeconds,
+              startHour: Math.floor(signal.activeFromSeconds / 3600),
+              activeFromSeconds: signal.activeFromSeconds,
+              activeUntilSeconds: signal.activeUntilSeconds,
+              phaseOffsetSeconds: signal.phaseOffsetSeconds,
             };
           }),
         );
@@ -339,7 +338,7 @@ function TrafficLightLayer({
             key={light.id}
             light={light}
             showPopup={zoom >= TRAFFIC_LIGHT_POPUP_ZOOM}
-            phaseNote="Условные фазы: OSM не содержит расписание светофора"
+            phaseNote="Фазы рассчитаны по данным базы"
           />
         ))}
     </>

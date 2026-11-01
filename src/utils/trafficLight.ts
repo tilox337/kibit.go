@@ -97,13 +97,29 @@ export function calcTrafficLightState(
   config: TrafficLightConfig,
   nowSeconds: number,
 ): TrafficLightState {
-  const sinceStart = getSecondsSinceStart(nowSeconds, config.startHour);
-  if (sinceStart < 0) return OFF_STATE;
+  const startSeconds =
+    config.activeFromSeconds ?? config.startHour * SECONDS_IN_HOUR;
+  let sinceStart = nowSeconds - startSeconds;
+
+  if (
+    config.activeFromSeconds !== undefined &&
+    config.activeUntilSeconds !== undefined
+  ) {
+    const secondsPerDay = 24 * SECONDS_IN_HOUR;
+    const activeDuration =
+      (config.activeUntilSeconds - startSeconds + secondsPerDay) %
+      secondsPerDay;
+    sinceStart = (sinceStart + secondsPerDay) % secondsPerDay;
+    if (activeDuration === 0 || sinceStart >= activeDuration) return OFF_STATE;
+  } else if (sinceStart < 0) {
+    return OFF_STATE;
+  }
 
   const phases = buildPhases(config);
   const cycleLength = getCycleLength(phases);
   const offset =
-    (sinceStart + (config.phaseOffsetSeconds ?? 0)) % cycleLength;
+    (sinceStart + (config.phaseOffsetSeconds ?? 0) + cycleLength) %
+    cycleLength;
   const { phase, elapsed } = findPhaseAt(phases, offset);
   const secondsLeft = Math.ceil(phase.duration - elapsed);
 

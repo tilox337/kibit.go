@@ -39,12 +39,33 @@ export function TimeLeft({ seconds }: { seconds: number | null }) {
   return <div className="traffic-popup__time">{seconds} с</div>;
 }
 
-// Сообщение, когда светофор ещё не начал работать
-export function OffMessage({ startHour }: { startHour: number }) {
+function formatTimeOfDay(seconds: number): string {
+  const secondsPerDay = 24 * 60 * 60;
+  const normalized =
+    ((Math.floor(seconds) % secondsPerDay) + secondsPerDay) % secondsPerDay;
+  const hours = Math.floor(normalized / 3600);
+  const minutes = Math.floor((normalized % 3600) / 60);
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+// Расписание светофора, когда он вне активного периода
+export function OffMessage({
+  startHour,
+  activeFromSeconds,
+  activeUntilSeconds,
+}: {
+  startHour: number;
+  activeFromSeconds?: number;
+  activeUntilSeconds?: number;
+}) {
   return (
     <div className="traffic-popup__info">
       <div className="traffic-popup__label">Светофор пока не работает</div>
-      <div className="traffic-popup__label">Начнёт в {startHour}:00</div>
+      <div className="traffic-popup__label">
+        {activeFromSeconds !== undefined && activeUntilSeconds !== undefined
+          ? `Работает ${formatTimeOfDay(activeFromSeconds)}–${formatTimeOfDay(activeUntilSeconds)}`
+          : `Начнёт в ${startHour}:00`}
+      </div>
     </div>
   );
 }
@@ -64,6 +85,8 @@ interface TrafficLightPopupProps {
   redSeconds: number; // сколько горит красный, сек
   greenSeconds: number; // сколько горит зелёный (вместе с морганием), сек
   startHour?: number; // во сколько начинается работа светофора, час (по умолчанию 5)
+  activeFromSeconds?: number;
+  activeUntilSeconds?: number;
   phaseOffsetSeconds?: number;
   phaseNote?: string;
   onDelete?: () => void; // если передать, во всплывашке появится кнопка «Удалить»
@@ -74,6 +97,8 @@ export default function TrafficLightPopup({
   redSeconds,
   greenSeconds,
   startHour = DEFAULT_START_HOUR,
+  activeFromSeconds,
+  activeUntilSeconds,
   phaseOffsetSeconds = 0,
   phaseNote,
   onDelete,
@@ -82,6 +107,8 @@ export default function TrafficLightPopup({
     redSeconds,
     greenSeconds,
     startHour,
+    activeFromSeconds,
+    activeUntilSeconds,
     phaseOffsetSeconds,
   });
 
@@ -96,7 +123,11 @@ export default function TrafficLightPopup({
           </div>
         </>
       ) : (
-        <OffMessage startHour={startHour} />
+        <OffMessage
+          startHour={startHour}
+          activeFromSeconds={activeFromSeconds}
+          activeUntilSeconds={activeUntilSeconds}
+        />
       )}
       {phaseNote && <div className="traffic-popup__note">{phaseNote}</div>}
       {onDelete && <DeleteButton onClick={onDelete} />}

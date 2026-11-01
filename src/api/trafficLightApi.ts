@@ -12,6 +12,11 @@ export interface OSMTrafficSignal {
   id: string;
   lat: number;
   lng: number;
+  redSeconds: number;
+  greenSeconds: number;
+  activeFromSeconds: number;
+  activeUntilSeconds: number;
+  phaseOffsetSeconds: number;
 }
 
 export interface MapBounds {

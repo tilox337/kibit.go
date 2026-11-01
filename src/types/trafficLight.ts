@@ -5,6 +5,8 @@ export interface TrafficLightConfig {
   redSeconds: number;
   greenSeconds: number; // включая моргающий зелёный в конце
   startHour: number; // час начала работы, 0-23
+  activeFromSeconds?: number;
+  activeUntilSeconds?: number;
   phaseOffsetSeconds?: number;
 }
 
