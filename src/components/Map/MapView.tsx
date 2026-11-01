@@ -18,12 +18,7 @@ import {
   OSM_ATTRIBUTION,
   OSM_TILE_URL,
 } from "../../constants/map";
-import {
-  DEFAULT_GREEN_SECONDS,
-  DEFAULT_RED_SECONDS,
-  DEFAULT_START_HOUR,
-  YELLOW_SECONDS,
-} from "../../constants/trafficLight";
+import { YELLOW_SECONDS } from "../../constants/trafficLight";
 import { ROUTE_FIT_PADDING } from "../../constants/route";
 import { DESTINATION_ZOOM } from "../../constants/search";
 import { fetchOSMTrafficSignals } from "../../api/trafficLightApi";
@@ -169,13 +164,21 @@ export function RouteOriginMarker({ origin }: { origin: LatLng }) {
 export function RouteLine({
   route,
   userLocation,
+
   highlightPassedRoute,
+  isRouteStarted,
 }: {
   route: Route;
   userLocation: LatLng | null;
   highlightPassedRoute: boolean;
+  isRouteStarted: boolean;
 }) {
-  if (!highlightPassedRoute || !userLocation || !route.points.length) {
+  if (
+    !highlightPassedRoute ||
+    !isRouteStarted ||
+    !userLocation ||
+    !route.points.length
+  ) {
     return <Polyline positions={route.points} pathOptions={ROUTE_STYLE} />;
   }
   const closestIndex = findClosestPointIndex(userLocation, route.points);
@@ -244,6 +247,8 @@ export function TrafficLightMarker({
             redSeconds={light.redSeconds}
             greenSeconds={light.greenSeconds}
             startHour={light.startHour}
+            activeFromSeconds={light.activeFromSeconds}
+            activeUntilSeconds={light.activeUntilSeconds}
             phaseOffsetSeconds={phaseOffsetSeconds}
             phaseNote={phaseNote}
             onDelete={onDelete ? () => onDelete(light.id) : undefined}
@@ -290,8 +295,6 @@ function TrafficLightLayer({
       controller.signal,
     )
       .then((signals) => {
-        const cycleLength =
-          DEFAULT_RED_SECONDS + DEFAULT_GREEN_SECONDS + YELLOW_SECONDS;
         setOsmLights(
           signals.map((signal) => {
             const id = `osm-${signal.id}`;
@@ -299,10 +302,12 @@ function TrafficLightLayer({
               id,
               lat: signal.lat,
               lng: signal.lng,
-              redSeconds: DEFAULT_RED_SECONDS,
-              greenSeconds: DEFAULT_GREEN_SECONDS,
-              startHour: DEFAULT_START_HOUR,
-              phaseOffsetSeconds: getPhaseOffsetSeconds(id, cycleLength),
+              redSeconds: signal.redSeconds,
+              greenSeconds: signal.greenSeconds,
+              startHour: Math.floor(signal.activeFromSeconds / 3600),
+              activeFromSeconds: signal.activeFromSeconds,
+              activeUntilSeconds: signal.activeUntilSeconds,
+              phaseOffsetSeconds: signal.phaseOffsetSeconds,
             };
           }),
         );
@@ -331,7 +336,7 @@ function TrafficLightLayer({
             key={light.id}
             light={light}
             showPopup={zoom >= TRAFFIC_LIGHT_POPUP_ZOOM}
-            phaseNote="Условные фазы: OSM не содержит расписание светофора"
+            phaseNote="Фазы рассчитаны по данным базы"
           />
         ))}
     </>
@@ -371,6 +376,7 @@ interface MapViewProps {
   routeOrigin: LatLng | null;
   destination: Place | null; // выбранный пункт назначения
   route: Route | null;
+  isRouteStarted: boolean;
   highlightPassedRoute: boolean;
   onMapClick: (lat: number, lng: number) => void;
   onDeleteLight: (id: string) => void;
@@ -385,6 +391,7 @@ export default function MapView({
   routeOrigin,
   destination,
   route,
+  isRouteStarted,
   highlightPassedRoute,
   onMapClick,
   onDeleteLight,
@@ -411,6 +418,7 @@ export default function MapView({
           location={userLocation}
           request={userLocationFocusRequest}
         />
+
         <MapFlyTo
           target={routeOrigin || userLocation ? null : destination}
           zoom={DESTINATION_ZOOM}
@@ -421,6 +429,7 @@ export default function MapView({
             route={route}
             userLocation={userLocation}
             highlightPassedRoute={highlightPassedRoute}
+            isRouteStarted={isRouteStarted}
           />
         )}
         {userLocation && <OriginMarker origin={userLocation} />}

@@ -37,6 +37,7 @@ export default function MainPage() {
   const [destination, setDestination] = useState<Place | null>(null);
   const hasInitialLocationFix = useRef(false);
   const shouldFocusWhenLocated = useRef(false);
+  const [isRouteStarted, setIsRouteStarted] = useState(false);
   const activeOrigin = routeOrigin ?? userLocation;
   const { route, isLoading, isError } = useRoute(activeOrigin, destination, {
     avoidTollRoads: settings.avoidTollRoads,
@@ -133,6 +134,7 @@ export default function MainPage() {
         routeOrigin={routeOrigin}
         destination={destination}
         route={route}
+        isRouteStarted={isRouteStarted}
         highlightPassedRoute={settings.highlightPassedRoute}
         onMapClick={handleMapClick}
         onDeleteLight={removeLight}
@@ -267,14 +269,35 @@ export default function MainPage() {
         </button>
       </nav>
       {destination && (
-        <RouteCard
-          destination={destination}
-          hasOrigin={activeOrigin !== null}
-          route={route}
-          isLoading={isLoading}
-          isError={isError}
-          onCancel={() => setDestination(null)}
-        />
+        <div
+          className={
+            isRouteStarted
+              ? "route-controls route-controls--started"
+              : "route-controls"
+          }
+        >
+          <RouteCard
+            destination={destination}
+            hasOrigin={activeOrigin !== null}
+            route={route}
+            isLoading={isLoading}
+            isError={isError}
+            onCancel={() => {
+              setDestination(null);
+              setIsRouteStarted(false);
+            }}
+          />
+
+          {route && !isLoading && !isError && !isRouteStarted && (
+            <button
+              className="place-button route-controls__start"
+              type="button"
+              onClick={() => setIsRouteStarted(true)}
+            >
+              Начать путь
+            </button>
+          )}
+        </div>
       )}
     </>
   );

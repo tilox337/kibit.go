@@ -17,12 +17,18 @@ const pool = new Pool({
 const MAX_LIGHTS_PER_VIEW = 5000;
 
 function sendJson(response, statusCode, body) {
-  response.writeHead(statusCode, { "content-type": "application/json; charset=utf-8" });
+  response.writeHead(statusCode, {
+    "content-type": "application/json; charset=utf-8",
+  });
   response.end(JSON.stringify(body));
 }
 
 function parseBounds(url) {
-  if (!["west", "south", "east", "north"].every((name) => url.searchParams.has(name))) {
+  if (
+    !["west", "south", "east", "north"].every((name) =>
+      url.searchParams.has(name),
+    )
+  ) {
     return null;
   }
 
@@ -69,7 +75,14 @@ async function handleRequest(request, response) {
 
   try {
     const { rows } = await pool.query(
-      `SELECT id::text AS id, ST_Y(geom) AS lat, ST_X(geom) AS lng
+      `SELECT id::text AS id,
+              ST_Y(geom) AS lat,
+              ST_X(geom) AS lng,
+              red_duration_seconds AS "redSeconds",
+              green_duration_seconds AS "greenSeconds",
+              active_from_seconds AS "activeFromSeconds",
+              active_until_seconds AS "activeUntilSeconds",
+              phase_offset_seconds AS "phaseOffsetSeconds"
        FROM nav_nodes
        WHERE tags ->> 'highway' = 'traffic_signals'
          AND geom && ST_MakeEnvelope($1, $2, $3, $4, 4326)
