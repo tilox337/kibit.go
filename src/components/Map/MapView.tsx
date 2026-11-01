@@ -18,9 +18,7 @@ import {
   OSM_ATTRIBUTION,
   OSM_TILE_URL,
 } from "../../constants/map";
-import {
-  YELLOW_SECONDS,
-} from "../../constants/trafficLight";
+import { YELLOW_SECONDS } from "../../constants/trafficLight";
 import { ROUTE_FIT_PADDING } from "../../constants/route";
 import { DESTINATION_ZOOM } from "../../constants/search";
 import { fetchOSMTrafficSignals } from "../../api/trafficLightApi";
