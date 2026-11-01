@@ -1,5 +1,5 @@
-// Адрес бэка. Поменять на настоящий, когда он появится
-export const API_URL = "https://api.example.com";
+// Пустой base URL оставляет запросы на текущем origin; Vite проксирует API локально.
+export const API_URL = "";
 
 export const TRAFFIC_LIGHTS_ENDPOINT = "/traffic-lights";
 

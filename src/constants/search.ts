@@ -1,12 +1,8 @@
 import { API_URL } from "./api";
 import type { Place } from "../types/search";
 
-// Поиск адресов: Nominatim, геокодер OpenStreetMap.
-// Правила публичного сервера: не чаще 1 запроса в секунду, без поиска на каждую букву,
-// для больших нагрузок нужен свой сервер или платный сервис:
-// https://operations.osmfoundation.org/policies/nominatim/
-export const SEARCH_URL = "https://nominatim.openstreetmap.org/search";
-export const SEARCH_LANGUAGE = "ru";
+// Поиск выполняет локальный Go API; Nominatim вызывается на backend.
+export const SEARCH_URL = `${API_URL}/api/v1/search/places`;
 export const SEARCH_RESULTS_LIMIT = 8;
 
 // Остальные методы (бэк пока не готов, в api/searchApi.ts стоят заглушки)

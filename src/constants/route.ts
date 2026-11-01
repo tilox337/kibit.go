@@ -1,7 +1,7 @@
-// Сервис маршрутов OSRM, профиль «на машине».
-// Публичный демо-сервер подходит только для разработки: без гарантий и с ограничением запросов.
-// Для продакшена нужен свой сервер OSRM или платный сервис (OpenRouteService, GraphHopper и т.п.)
-export const ROUTE_URL = "https://router.project-osrm.org/route/v1/driving";
+import { API_URL } from "./api";
+
+// Локальный Go API строит маршрут и при необходимости вызывает сервис маршрутизации.
+export const ROUTE_URL = `${API_URL}/api/v1/routes`;
 
 // Отступ от краёв экрана, когда карта вписывает маршрут целиком
 export const ROUTE_FIT_PADDING = 80;

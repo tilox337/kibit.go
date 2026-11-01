@@ -48,10 +48,14 @@ npm run api
 npm run dev
 ```
 
-The Vite development server proxies `/api` to port 3001. If the API itself runs
-in Docker, use the PostgreSQL service name instead of `127.0.0.1` in
+The Vite development server proxies `/api` to the Node API on port 3001. Search
+and route requests use the Go API endpoints `POST /api/v1/search/places` and
+`POST /api/v1/routes`; Vite proxies `/api/v1` to `localhost:8080`. The Go API
+must be started separately; it is not launched by `npm run api`. If the Node
+API runs in Docker, use the PostgreSQL service name instead of `127.0.0.1` in
 `DATABASE_URL`; `localhost` inside a container refers to that container.
-Configure the same `/api` route through a reverse proxy when deploying.
+Configure the same `/api` and `/api/v1` routes through a reverse proxy when
+deploying.
 
 For efficient viewport queries, create spatial and tag indexes once in the
 `v_navigator` database:
